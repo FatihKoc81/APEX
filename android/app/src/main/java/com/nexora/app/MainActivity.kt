@@ -62,18 +62,39 @@ fun ApexHome() {
         Thread {
             try {
                 val req = Request.Builder().url(BuildConfig.API_BASE_URL.trimEnd('/') + "/providers").get().build()
+                var createdTaskId = ""
                 http.newCall(req).execute().use { response ->
-                    if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
-                    val arr = JSONArray(response.body?.string() ?: "[]")
-                    val map = mutableMapOf<String, Boolean>()
-                    for (i in 0 until arr.length()) {
-                        val item = arr.getJSONObject(i)
-                        map[item.getString("provider")] = item.optBoolean("configured")
-                    }
-                    activity.runOnUiThread {
-                        providers = map
-                        status = if (map.values.any { it }) "SUNUCU BAĞLI • ${map.values.count { it }} SAĞLAYICI HAZIR"
-                            else "SUNUCU BAĞLI • API ANAHTARLARI BEKLENİYOR"
+                    val result = JSONObject(response.body?.string() ?: "{}")
+                    if (!response.isSuccessful) throw Exception(result.optString("error", "HTTP ${response.code}"))
+                    createdTaskId = result.getString("id")
+                }
+                val id = createdTaskId
+                activity.runOnUiThread {
+                    taskId = id
+                    status = "GPT DEVİR ALDI • OTOMATİK DEVAM BAŞLADI"
+                }
+                // Poll outside the inline use lambda so Kotlin can exit the loop safely.
+                var finished = false
+                while (!finished) {
+                    Thread.sleep(2500)
+                    val poll = Request.Builder()
+                        .url(BuildConfig.API_BASE_URL.trimEnd('/') + "/tasks/" + id)
+                        .get().build()
+                    http.newCall(poll).execute().use { taskResponse ->
+                        if (!taskResponse.isSuccessful) throw Exception("Görev durumu alınamadı: HTTP ${taskResponse.code}")
+                        val task = JSONObject(taskResponse.body?.string() ?: "{}")
+                        val taskStatus = task.optString("status", "running")
+                        val step = task.optInt("step", 0)
+                        val message = when (taskStatus) {
+                            "completed" -> "GÖREV TAMAMLANDI • ${step} TUR"
+                            "blocked" -> "GÖREV ENGELDE • AYRINTI İÇİN GÖREV KAYDINA BAKIN"
+                            "failed" -> "GÖREV HATASI • ${task.optString("error")}"
+                            "paused" -> "GÜVENLİ DURAKLATMA • ${step} TUR KAYDEDİLDİ"
+                            "queued" -> "GPT OTOMATİK DEVAM İÇİN SIRADA • ${step} TUR"
+                            else -> "GPT DEVAM EDİYOR • ${step}. TUR • GEMINI DENETLİYOR"
+                        }
+                        activity.runOnUiThread { status = message }
+                        finished = taskStatus in listOf("completed", "blocked", "failed", "paused", "cancelled")
                     }
                 }
             } catch (e: Exception) {

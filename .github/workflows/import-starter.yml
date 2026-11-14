@@ -13,6 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Extract starter project
         run: |
@@ -28,5 +29,6 @@ jobs:
           git add -A ':!.github/workflows/android.yml'
           if ! git diff --cached --quiet; then
             git commit -m "Import NEXORA starter project"
-            git push
+            git pull --rebase origin main
+            git push origin HEAD:main
           fi

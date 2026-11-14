@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'NEXORA-starter.zip'
+      - '.nexora-import-trigger'
   workflow_dispatch:
 permissions:
   contents: write

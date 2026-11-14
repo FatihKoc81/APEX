@@ -103,6 +103,7 @@ fun ApexHome() {
                         val poll = Request.Builder()
                             .url(BuildConfig.API_BASE_URL.trimEnd('/') + "/tasks/" + id)
                             .get().build()
+                        var finished = false
                         http.newCall(poll).execute().use { taskResponse ->
                             if (!taskResponse.isSuccessful) throw Exception("Görev durumu alınamadı: HTTP ${taskResponse.code}")
                             val task = JSONObject(taskResponse.body?.string() ?: "{}")
@@ -117,8 +118,9 @@ fun ApexHome() {
                                 else -> "GPT DEVAM EDİYOR • ${step}. TUR • GEMINI DENETLİYOR"
                             }
                             activity.runOnUiThread { status = message }
-                            if (taskStatus in listOf("completed", "blocked", "failed", "paused", "cancelled")) break
+                            finished = taskStatus in listOf("completed", "blocked", "failed", "paused", "cancelled")
                         }
+                        if (finished) break
                     }
                 }
             } catch (e: Exception) {

@@ -40,7 +40,9 @@ export async function workerLoop() {
    event(task.id,"orchestrator","running","Görev planlanıyor");
    try {
     const configured=providerStatus().filter(x=>x.configured).map(x=>x.provider as ProviderName);
-    if(configured.length===0) throw new Error("Hiçbir sağlayıcı API anahtarı yapılandırılmamış.");
+    const required:ProviderName[]=["openai","gemini","grok","claude"];
+    const missing=required.filter(p=>!configured.includes(p));
+    if(missing.length>0) throw new Error(`Dört sağlayıcının tamamı zorunlu. Eksik API anahtarları: ${missing.join(", ")}`);
     // Independent first-pass analysis runs concurrently across all configured providers.
     const replies=await Promise.allSettled(configured.map(p=>askProvider(p,
       "You are one specialist in NEXORA, a coordinated multi-agent system. Be concise, factual, state assumptions and blockers.",

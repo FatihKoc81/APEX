@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
@@ -38,7 +39,7 @@ private val Night = Color(0xFF080B14)
 private val Panel = Color(0xFF141A29)
 private val Cyan = Color(0xFF65E5FF)
 private val Violet = Color(0xFF9A7BFF)
-private val http = OkHttpClient()
+private val http = OkHttpClient.Builder()\n    .connectTimeout(60, TimeUnit.SECONDS)\n    .readTimeout(120, TimeUnit.SECONDS)\n    .writeTimeout(60, TimeUnit.SECONDS)\n    .callTimeout(150, TimeUnit.SECONDS)\n    .build()
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

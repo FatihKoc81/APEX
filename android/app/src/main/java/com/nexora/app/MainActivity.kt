@@ -53,7 +53,7 @@ fun ApexHome() {
     var menuExpanded by remember { mutableStateOf(false) }
     var addExpanded by remember { mutableStateOf(false) }
     var attachmentLabel by remember { mutableStateOf("") }
-    var providers by remember { mutableStateOf(mapOf("openai" to false, "gemini" to false, "grok" to false, "claude" to false)) }
+    var providers by remember { mutableStateOf(mapOf("openai" to false, "gemini" to false)) }
     var taskId by remember { mutableStateOf("") }
 
     fun refreshProviders() {
@@ -151,7 +151,7 @@ fun ApexHome() {
                 Surface(Modifier.weight(1.18f).fillMaxWidth(), color = Panel.copy(alpha = .97f), shape = RoundedCornerShape(22.dp)) {
                     Column(Modifier.fillMaxSize().padding(if (compact) 14.dp else 18.dp), verticalArrangement = Arrangement.SpaceEvenly) {
                         Text("KOMUTA MERKEZİ", color = Cyan, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
-                        Text("Dört zihin. Tek hedef.", color = Color.White, fontSize = if (compact) 20.sp else 23.sp, fontWeight = FontWeight.Bold)
+                        Text("İki zihin. Tek hedef.", color = Color.White, fontSize = if (compact) 20.sp else 23.sp, fontWeight = FontWeight.Bold)
                         OutlinedTextField(command, { command = it }, Modifier.fillMaxWidth(), minLines = 2, maxLines = 3, placeholder = { Text("APEX'ya bir görev ver...") }, shape = RoundedCornerShape(15.dp))
                         if (attachmentLabel.isNotBlank()) Text(attachmentLabel, color = Cyan, fontSize = 9.sp, maxLines = 1)
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -186,10 +186,7 @@ fun ApexHome() {
                         ProviderTile("CHATGPT", "Planlama • Koordinasyon", providers["openai"] == true, Cyan, Modifier.weight(1f))
                         ProviderTile("GEMINI", "Analiz • Doğrulama", providers["gemini"] == true, Violet, Modifier.weight(1f))
                     }
-                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ProviderTile("GROK", "Alternatif çözüm • Araştırma", providers["grok"] == true, Color(0xFFFFB86B), Modifier.weight(1f))
-                        ProviderTile("CLAUDE", "Eleştiri • Kalite kontrol", providers["claude"] == true, Color(0xFFFF8F9B), Modifier.weight(1f))
-                    }
+
                 }
                 Text(if (taskId.isBlank()) "GÖREV MOTORU • SUNUCU KUYRUĞU" else "AKTİF GÖREV • $taskId", color = Color.Gray, fontSize = 8.sp, maxLines = 1)
             }

@@ -2,28 +2,41 @@ import { randomUUID } from "node:crypto";
 import { db, event } from "./db.js";
 import { askProvider, providerStatus, type ProviderName } from "./providers.js";
 
-const MAX_STEPS = Number(process.env.MAX_STEPS_PER_TASK || 20);
-const MAX_MINUTES = Number(process.env.MAX_TASK_MINUTES || 90);
+const MAX_STEPS = Number(process.env.MAX_STEPS_PER_TASK || 50);
+const MAX_MINUTES = Number(process.env.MAX_TASK_MINUTES || 180);
 const sleep = (ms:number) => new Promise(r => setTimeout(r, ms));
 
+type Checkpoint = { notes: string; transcript: string[] };
+function readCheckpoint(raw:string|null):Checkpoint {
+  if (!raw) return {notes:"",transcript:[]};
+  try { const x=JSON.parse(raw); return {notes:String(x.notes||""),transcript:Array.isArray(x.transcript)?x.transcript:[]}; }
+  catch { return {notes:raw,transcript:[]}; }
+}
+function saveCheckpoint(id:string,step:number,cp:Checkpoint) {
+  db.prepare("UPDATE tasks SET step=?,result=?,updated_at=? WHERE id=?")
+    .run(step,JSON.stringify(cp),new Date().toISOString(),id);
+}
 export function createTask(instruction:string) {
   const id=randomUUID(), now=new Date().toISOString();
   db.prepare("INSERT INTO tasks(id,instruction,status,created_at,updated_at) VALUES(?,?,?,?,?)")
     .run(id,instruction,"queued",now,now);
-  event(id,"queued","ok","Görev kuyruğa alındı");
+  event(id,"queued","ok","Görev kuyruğa alındı; otomatik devam motoru başlatıldı");
   return id;
 }
 export function getTask(id:string) {
   const task=db.prepare("SELECT * FROM tasks WHERE id=?").get(id) as any;
   if(!task) return null;
-  return {...task,events:db.prepare("SELECT * FROM events WHERE task_id=? ORDER BY id").all(id)};
+  const cp=readCheckpoint(task.result);
+  return {...task,result:cp.transcript.join("\n\n"),workingNotes:cp.notes,
+    events:db.prepare("SELECT * FROM events WHERE task_id=? ORDER BY id").all(id)};
 }
 export function setTaskControl(id:string, action:"pause"|"resume"|"cancel") {
-  const row=db.prepare("SELECT id FROM tasks WHERE id=?").get(id); if(!row) return false;
-  if(action==="cancel") db.prepare("UPDATE tasks SET status='cancelled',updated_at=? WHERE id=?").run(new Date().toISOString(),id);
+  const row=db.prepare("SELECT id,status FROM tasks WHERE id=?").get(id) as any;
+  if(!row) return false;
+  if(action==="cancel") db.prepare("UPDATE tasks SET status='cancelled',paused=0,updated_at=? WHERE id=?").run(new Date().toISOString(),id);
   else db.prepare("UPDATE tasks SET paused=?,status=?,updated_at=? WHERE id=?")
-    .run(action==="pause"?1:0,action==="pause"?"paused":"running",new Date().toISOString(),id);
-  event(id,action,"ok",`Görev ${action==="pause"?"duraklatıldı":action==="resume"?"sürdürüldü":"iptal edildi"}`);
+    .run(action==="pause"?1:0,action==="pause"?"paused":"queued",new Date().toISOString(),id);
+  event(id,action,"ok",`Görev ${action==="pause"?"duraklatıldı":action==="resume"?"devam kuyruğuna alındı":"iptal edildi"}`);
   return true;
 }
 
@@ -36,69 +49,51 @@ export async function workerLoop() {
       if(!task) { await sleep(1500); continue; }
       const started=Date.now();
       let step=Number(task.step||0);
-      let workingNotes="";
+      const cp=readCheckpoint(task.result);
       db.prepare("UPDATE tasks SET status='running',updated_at=? WHERE id=?").run(new Date().toISOString(),task.id);
-      event(task.id,"orchestrator","running","GPT ve Gemini birlikte görevi devraldı");
+      event(task.id,"orchestrator","running","GPT otomatik devam döngüsünü devraldı; Gemini denetçi olarak eşlik ediyor");
       try {
         const configured=providerStatus().filter(x=>x.configured).map(x=>x.provider as ProviderName);
         const missing=(["openai","gemini"] as ProviderName[]).filter(p=>!configured.includes(p));
         if(missing.length) throw new Error(`Eksik API anahtarı: ${missing.join(", ")}`);
-
-        let completed=false;
-        while(!completed && step<MAX_STEPS) {
-          const current=db.prepare("SELECT status,paused FROM tasks WHERE id=?").get(task.id) as any;
-          if(!current || current.status==="cancelled") break;
-          while(current?.paused) { await sleep(1200); }
-          if((Date.now()-started)/60000 > MAX_MINUTES) throw new Error("Görev zaman sınırını aştı; güvenli durdurma yapıldı.");
-
+        let terminal=false;
+        while(!terminal && step<MAX_STEPS) {
+          let state=db.prepare("SELECT status,paused FROM tasks WHERE id=?").get(task.id) as any;
+          while(state?.paused && state.status==="paused") { await sleep(1000); state=db.prepare("SELECT status,paused FROM tasks WHERE id=?").get(task.id) as any; }
+          if(!state || ["cancelled","completed","blocked","failed"].includes(state.status)) { terminal=true; break; }
+          if((Date.now()-started)/60000>MAX_MINUTES) throw new Error("Güvenli çalışma süresi sınırına ulaşıldı; kayıt korundu.");
           step++;
-          event(task.id,"iteration","running",`Otomatik devam turu ${step}/${MAX_STEPS}`);
-          const prompt=`Kullanıcının asıl emri: ${task.instruction}
-
-Önceki turlardan kalan çalışma notları:
-${workingNotes || "(Henüz yok)"}
-
-Bu görevden vazgeçme ve kullanıcıdan "devam et" bekleme. Şimdi sıradaki somut işi yap/üret. Gerçekten yapamadığın harici işlemleri yapılmış gibi gösterme; gerekli erişim yoksa açık engel yaz. Henüz tamamlanmadıysa kalan işleri ve bir sonraki uygulanabilir adımı belirt.
-Görev ancak istenen tüm çıktılar tamamlandığında ve kontrol edildiğinde tamamdır. Son satırda yalnızca şu işaretlerden birini kullan:
-TASK_STATUS: CONTINUE
-TASK_STATUS: COMPLETE
-TASK_STATUS: BLOCKED`;
-          const results=await Promise.all([
-            askProvider("openai","Sen NEXORA'nın görev yürütücüsüsün. Asıl emri takip et, somut çıktı üret ve önceki işten devam et.",prompt),
-            askProvider("gemini","Sen NEXORA'nın bağımsız uygulayıcısı ve denetçisisin. Eksikleri bul, çözüm üret ve görevin tamamlanmasını doğrula.",prompt)
-          ]);
-          const combined=results.map(r=>`[${r.provider.toUpperCase()}]\n${r.text}`).join("\n\n---\n\n");
-          const review=await askProvider("openai",
-            "Sen NEXORA görev yöneticisisin. GPT ve Gemini çıktılarını karşılaştır. Görev tamamlanmadıysa CONTINUE de. Harici erişim yoksa BLOCKED de. Tamamlandı iddiasını yalnızca somut çıktı ve doğrulama varsa kabul et.",
-            `ASIL EMİR:\n${task.instruction}\n\nBU TURUN ÇIKTILARI:\n${combined}\n\nÖnceki notlar:\n${workingNotes}\n\nBir sonraki tur için kısa, kesin çalışma notları üret. En sonda TASK_STATUS: CONTINUE, TASK_STATUS: COMPLETE veya TASK_STATUS: BLOCKED yaz.`);
-          workingNotes=review.text;
-          db.prepare("UPDATE tasks SET step=?,result=?,updated_at=? WHERE id=?")
-            .run(step,workingNotes,new Date().toISOString(),task.id);
-          event(task.id,"checkpoint","ok",`Tur ${step} kaydedildi; otomatik devam kararı işlendi`,"openai");
-
+          event(task.id,"iteration","running",`GPT'ye devam talimatı gönderiliyor • tur ${step}/${MAX_STEPS}`);
+          const prompt=`KULLANICININ DEĞİŞMEZ ANA EMRİ:\n${task.instruction}\n\nÖNCEKİ ÇALIŞMA NOTLARI:\n${cp.notes||"(İlk tur)"}\n\nÖNCEKİ TUR KAYITLARININ SON BÖLÜMÜ:\n${cp.transcript.slice(-6).join("\n\n").slice(-18000)||"(Yok)"}\n\nŞİMDİ DEVAM ET. Önceki cevabınla yetinme. Kalan işi somut biçimde ilerlet, kendi çıktını kontrol et, eksikleri düzelt. Bu otomatik döngüde kullanıcıdan "devam et" bekleme; görev tamamlanmadıysa bir sonraki turda devam edilmek üzere açık ve uygulanabilir not bırak. Yapmadığın dış işlemi yapılmış gibi söyleme. Harici araç/erişim gerektiren işte bunu açıkça belirt.\n\nYanıtının sonunda tam olarak bir durum etiketi ver:\nTASK_STATUS: CONTINUE (iş sürüyorsa)\nTASK_STATUS: COMPLETE (bütün istekler gerçekten bitip kontrol edildiyse)\nTASK_STATUS: BLOCKED (izin/erişim/insan kararı olmadan ilerlenemiyorsa).`;
+          const gpt=await askProvider("openai","Sen ChatGPT rolündeki ana yürütücüsün. Emir tamamlanana kadar her turda gerçekten devam et. Sadece plan yazıp durma.",prompt);
+          cp.transcript.push(`TUR ${step} • GPT\n${gpt.text}`);
+          event(task.id,"gpt","ok",`GPT tur ${step} yanıtını verdi`,"openai");
+          const gem=await askProvider("gemini","Sen bağımsız kalite denetçisisin. GPT'nin yaptığı işi denetle; eksiklerini ve doğrulama gereksinimlerini belirt. Kullanıcı emrinin tamamlanıp tamamlanmadığını değerlendir.",`ANA EMİR:\n${task.instruction}\n\nGPT TUR ${step} ÇIKTISI:\n${gpt.text}\n\nÖNCEKİ NOTLAR:\n${cp.notes}\n\nKısa denetim yaz: somut eksikler, doğrulama ve devam için sonraki adım. Gerçekten bitmediyse tamamlandı deme.`);
+          cp.transcript.push(`TUR ${step} • GEMINI DENETİMİ\n${gem.text}`);
+          event(task.id,"gemini","ok",`Gemini tur ${step} denetimini tamamladı`,"gemini");
+          const review=await askProvider("openai","Sen son karar veren görev yöneticisisin. Gemini denetimini dikkate al. Erken tamamlandı deme. Görev tamamlanmadıysa CONTINUE seç.",`KULLANICI EMRİ:\n${task.instruction}\n\nGPT ÇIKTISI:\n${gpt.text}\n\nGEMINI DENETİMİ:\n${gem.text}\n\nÖnceki çalışma notları:\n${cp.notes}\n\nBir sonraki tur için kısa çalışma notlarını güncelle. Tüm isteklerin gerçekten tamamlanıp kontrol edildiğine dair kanıt yoksa TASK_STATUS: CONTINUE yaz. Dış erişim/izin olmadan ilerlemek mümkün değilse TASK_STATUS: BLOCKED yaz. Yalnızca tüm iş tamam ve doğrulanmışsa TASK_STATUS: COMPLETE yaz. Son satırda durum etiketini yaz.`);
+          cp.notes=review.text;
+          cp.transcript.push(`TUR ${step} • GPT DEVAM KARARI\n${review.text}`);
+          saveCheckpoint(task.id,step,cp);
           if(/TASK_STATUS:\s*BLOCKED/i.test(review.text)) {
-            db.prepare("UPDATE tasks SET status='blocked',error=?,updated_at=? WHERE id=?")
-              .run("Dış erişim veya kullanıcı onayı gerekiyor. Ayrıntı görev notlarında.",new Date().toISOString(),task.id);
-            event(task.id,"blocked","warning","Görev harici erişim/izin bekliyor");
-            completed=true;
+            db.prepare("UPDATE tasks SET status='blocked',error=?,updated_at=? WHERE id=?").run("İnsan onayı veya harici erişim gerekiyor. Ayrıntı görev kaydında.",new Date().toISOString(),task.id);
+            event(task.id,"blocked","warning","Görev erişim/izin bekliyor"); terminal=true;
           } else if(/TASK_STATUS:\s*COMPLETE/i.test(review.text)) {
-            db.prepare("UPDATE tasks SET status='completed',result=?,updated_at=? WHERE id=?")
-              .run(review.text,new Date().toISOString(),task.id);
-            event(task.id,"completion","ok","İki sağlayıcıyla görev tamamlandı olarak değerlendirildi","openai");
-            completed=true;
+            db.prepare("UPDATE tasks SET status='completed',error=NULL,updated_at=? WHERE id=?").run(new Date().toISOString(),task.id);
+            event(task.id,"completion","ok","GPT ve Gemini kontrolünden sonra görev tamamlandı olarak işaretlendi"); terminal=true;
           } else {
-            await sleep(700);
+            event(task.id,"continue","running","GPT'ye otomatik devam turu için yeni talimat gönderilecek");
+            await sleep(1200);
           }
         }
-        if(!completed) {
-          db.prepare("UPDATE tasks SET status='paused',error=?,updated_at=? WHERE id=?")
-            .run("Güvenlik adım sınırına ulaşıldı. Devam ettirmek için görev yeniden başlatılmalı.",new Date().toISOString(),task.id);
-          event(task.id,"step_limit","warning","Tur sınırına ulaşıldı; otomatik maliyet koruması devrede");
+        if(!terminal) {
+          db.prepare("UPDATE tasks SET status='paused',error=?,updated_at=? WHERE id=?").run(`Otomatik güvenlik sınırı (${MAX_STEPS} tur) doldu. Kayıt korundu; devam ettirilebilir.`,new Date().toISOString(),task.id);
+          event(task.id,"checkpoint_limit","warning","Tur sınırında güvenli duraklatma; çalışma notları saklandı");
         }
       } catch(e:any) {
-        db.prepare("UPDATE tasks SET status='failed',error=?,updated_at=? WHERE id=?")
-          .run(e.message||String(e),new Date().toISOString(),task.id);
-        event(task.id,"failed","error",e.message||String(e));
+        db.prepare("UPDATE tasks SET status='queued',error=?,updated_at=? WHERE id=?").run(e.message||String(e),new Date().toISOString(),task.id);
+        event(task.id,"retry","warning",`Geçici hata; görev kaldığı yerden yeniden denenecek: ${e.message||String(e)}`);
+        await sleep(5000);
       }
     }
   } finally { busy=false; }

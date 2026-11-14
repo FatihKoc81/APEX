@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<defs>
+ <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#00eaff"/><stop offset=".52" stop-color="#267cff"/><stop offset="1" stop-color="#d72cff"/></linearGradient>
+ <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".48" stop-color="#8ceeff"/><stop offset="1" stop-color="#a77bff"/></linearGradient>
+ <linearGradient id="word" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#00eaff"/><stop offset=".5" stop-color="#f5fbff"/><stop offset="1" stop-color="#d34cff"/></linearGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<rect x="10" y="10" width="492" height="492" rx="82" fill="#050a20" stroke="url(#rim)" stroke-width="8"/>
+<g filter="url(#glow)">
+ <path d="M95 318 256 91 417 318 355 318 256 178 157 318Z" fill="url(#metal)" stroke="#baf8ff" stroke-width="3"/>
+ <path d="M256 204 224 258 247 247 247 318 265 318 265 247 288 258Z" fill="#00eaff"/>
+ <path d="M256 204 224 258 247 247 247 318 265 318 265 247 288 258Z" fill="none" stroke="#8ffaff" stroke-width="2"/>
+ <path d="M91 224 Q175 143 256 151 Q355 138 421 225" fill="none" stroke="url(#rim)" stroke-width="9" stroke-linecap="round"/>
+ <circle cx="111" cy="213" r="13" fill="#00eaff"/><circle cx="399" cy="213" r="13" fill="#db43ff"/>
+ <path d="M256 64v-17m-17 17h34" stroke="#a8f8ff" stroke-width="4" stroke-linecap="round"/>
+</g>
+<text x="256" y="402" text-anchor="middle" font-family="DejaVu Sans,Arial,sans-serif" font-size="82" font-weight="900" letter-spacing="5" fill="url(#word)">APEX</text>
+<path d="M110 430 Q256 395 402 430" fill="none" stroke="url(#rim)" stroke-width="5" stroke-linecap="round"/>
+</svg>

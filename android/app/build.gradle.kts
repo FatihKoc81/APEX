@@ -7,12 +7,23 @@ android {
     namespace = "com.nexora.app"
     compileSdk = 35
     defaultConfig {
-        applicationId = "com.nexora.app"
+        applicationId = "com.nexora.mobile"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
+        versionCode = (System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1) + 100
         versionName = "0.1.0"
         buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8787/\"")
+    }
+    signingConfigs {
+        create("stableDebug") {
+            storeFile = file("nexora-debug.keystore")
+            storePassword = "nexoraDebug2026"
+            keyAlias = "nexora"
+            keyPassword = "nexoraDebug2026"
+        }
+    }
+    buildTypes {
+        getByName("debug") { signingConfig = signingConfigs.getByName("stableDebug") }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

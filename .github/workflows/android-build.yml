@@ -36,6 +36,10 @@ jobs:
             mkdir -p android/app/src/main/res/mipmap-$1
             convert -background none -density 300 android/apex-logo.svg -resize $2x$2 android/app/src/main/res/mipmap-$1/ic_launcher.png
           done
+      - name: Generate APEX in-app logo
+        run: |
+          mkdir -p android/app/src/main/res/drawable-nodpi
+          convert -background none -density 300 android/apex-logo.svg -resize 512x512 android/app/src/main/res/drawable-nodpi/apex_logo.png
       - name: Build debug APK
         working-directory: android
         run: gradle assembleDebug --stacktrace

@@ -1,6 +1,6 @@
-# NEXORA
+# APEX
 
-Standalone Android + backend starter for a four-provider AI orchestration system.
+Standalone Android + backend starter for a AI orchestration system.
 
 ## Architecture
 - `android/`: Kotlin + Jetpack Compose Android client.
@@ -16,8 +16,6 @@ Do not put provider API keys in the Android app.
 ## Providers
 - OpenAI (ChatGPT models): `OPENAI_API_KEY`
 - Google Gemini: `GEMINI_API_KEY`
-- xAI Grok: `XAI_API_KEY`
-- Anthropic Claude: `ANTHROPIC_API_KEY`
 
 ## Run server
 ```bash
@@ -28,5 +26,5 @@ npm run dev
 ```
 
 ## Android
-Open `android/` in Android Studio, set `NEXORA_API_BASE_URL` in `android/local.properties`
+Open `android/` in Android Studio, set `APEX_API_BASE_URL` in `android/local.properties`
 or edit the BuildConfig field, then run on a device. Android Studio is required to build/sign APK.

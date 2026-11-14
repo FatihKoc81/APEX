@@ -41,12 +41,12 @@ private val http = OkHttpClient()
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { NexoraHome() }
+        setContent { ApexHome() }
     }
 }
 
 @Composable
-fun NexoraHome() {
+fun ApexHome() {
     val activity = androidx.compose.ui.platform.LocalContext.current as ComponentActivity
     var command by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("SUNUCU BAĞLANTISI DENETLENİYOR") }
@@ -130,7 +130,7 @@ fun NexoraHome() {
             ) {
                 Row(Modifier.fillMaxWidth().height(if (compact) 54.dp else 64.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("NEXORA", fontSize = if (compact) 27.sp else 32.sp, fontWeight = FontWeight.Black, color = Color.White, letterSpacing = 3.sp)
+                        Text("APEX", fontSize = if (compact) 27.sp else 32.sp, fontWeight = FontWeight.Black, color = Color.White, letterSpacing = 3.sp)
                         Text("MULTI-INTELLIGENCE COMMAND", fontSize = 9.sp, color = Cyan, letterSpacing = 1.5.sp)
                     }
                     Surface(color = Color(0x332DE5FF), shape = RoundedCornerShape(50)) {
@@ -152,7 +152,7 @@ fun NexoraHome() {
                     Column(Modifier.fillMaxSize().padding(if (compact) 14.dp else 18.dp), verticalArrangement = Arrangement.SpaceEvenly) {
                         Text("KOMUTA MERKEZİ", color = Cyan, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
                         Text("Dört zihin. Tek hedef.", color = Color.White, fontSize = if (compact) 20.sp else 23.sp, fontWeight = FontWeight.Bold)
-                        OutlinedTextField(command, { command = it }, Modifier.fillMaxWidth(), minLines = 2, maxLines = 3, placeholder = { Text("NEXORA'ya bir görev ver...") }, shape = RoundedCornerShape(15.dp))
+                        OutlinedTextField(command, { command = it }, Modifier.fillMaxWidth(), minLines = 2, maxLines = 3, placeholder = { Text("APEX'ya bir görev ver...") }, shape = RoundedCornerShape(15.dp))
                         if (attachmentLabel.isNotBlank()) Text(attachmentLabel, color = Cyan, fontSize = 9.sp, maxLines = 1)
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Box {
@@ -167,7 +167,7 @@ fun NexoraHome() {
                                 val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                                     putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR")
-                                    putExtra(RecognizerIntent.EXTRA_PROMPT, "NEXORA için talimatınızı söyleyin")
+                                    putExtra(RecognizerIntent.EXTRA_PROMPT, "APEX için talimatınızı söyleyin")
                                 }
                                 try { speechInput.launch(intent) } catch (_: Exception) { status = "SES TANIMA HİZMETİ BULUNAMADI" }
                             }, modifier = Modifier.size(if (compact) 42.dp else 48.dp)) { Icon(Icons.Default.Mic, "Sesli talimat", tint = Cyan) }

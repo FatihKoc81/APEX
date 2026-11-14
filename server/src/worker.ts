@@ -74,7 +74,7 @@ TASK_STATUS: BLOCKED`;
           workingNotes=review.text;
           db.prepare("UPDATE tasks SET step=?,result=?,updated_at=? WHERE id=?")
             .run(step,workingNotes,new Date().toISOString(),task.id);
-          event(task.id,"checkpoint","ok",`Tur ${step} kaydedildi; otomatik devam kararı işlendi","openai");
+          event(task.id,"checkpoint","ok",`Tur ${step} kaydedildi; otomatik devam kararı işlendi`,"openai");
 
           if(/TASK_STATUS:\s*BLOCKED/i.test(review.text)) {
             db.prepare("UPDATE tasks SET status='blocked',error=?,updated_at=? WHERE id=?")

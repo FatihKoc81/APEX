@@ -17,6 +17,8 @@ android {
     signingConfigs {
         create("stableDebug") {
             storeFile = file("nexora-debug.keystore")
+            enableV1Signing = true
+            enableV2Signing = true
             storePassword = "nexoraDebug2026"
             keyAlias = "nexora"
             keyPassword = "nexoraDebug2026"

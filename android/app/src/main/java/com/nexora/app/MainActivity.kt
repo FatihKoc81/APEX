@@ -61,91 +61,78 @@ fun ApexHome() {
     fun refreshProviders() {
         Thread {
             try {
-                val req = Request.Builder().url(BuildConfig.API_BASE_URL.trimEnd('/') + "/providers").get().build()
-                var createdTaskId = ""
-                http.newCall(req).execute().use { response ->
-                    val result = JSONObject(response.body?.string() ?: "{}")
-                    if (!response.isSuccessful) throw Exception(result.optString("error", "HTTP ${response.code}"))
-                    createdTaskId = result.getString("id")
+                val req = Request.Builder()
+                    .url(BuildConfig.API_BASE_URL.trimEnd('/') + "/providers")
+                    .get().build()
+                val result = http.newCall(req).execute().use { response ->
+                    if (!response.isSuccessful) throw Exception("Sağlayıcı durumu alınamadı: HTTP ${response.code}")
+                    JSONArray(response.body?.string() ?: "[]")
                 }
-                val id = createdTaskId
+                val state = mutableMapOf("openai" to false, "gemini" to false)
+                for (i in 0 until result.length()) {
+                    val item = result.getJSONObject(i)
+                    state[item.optString("provider")] = item.optBoolean("configured")
+                }
                 activity.runOnUiThread {
-                    taskId = id
-                    status = "GPT DEVİR ALDI • OTOMATİK DEVAM BAŞLADI"
-                }
-                // Poll outside the inline use lambda so Kotlin can exit the loop safely.
-                var finished = false
-                while (!finished) {
-                    Thread.sleep(2500)
-                    val poll = Request.Builder()
-                        .url(BuildConfig.API_BASE_URL.trimEnd('/') + "/tasks/" + id)
-                        .get().build()
-                    http.newCall(poll).execute().use { taskResponse ->
-                        if (!taskResponse.isSuccessful) throw Exception("Görev durumu alınamadı: HTTP ${taskResponse.code}")
-                        val task = JSONObject(taskResponse.body?.string() ?: "{}")
-                        val taskStatus = task.optString("status", "running")
-                        val step = task.optInt("step", 0)
-                        val message = when (taskStatus) {
-                            "completed" -> "GÖREV TAMAMLANDI • ${step} TUR"
-                            "blocked" -> "GÖREV ENGELDE • AYRINTI İÇİN GÖREV KAYDINA BAKIN"
-                            "failed" -> "GÖREV HATASI • ${task.optString("error")}"
-                            "paused" -> "GÜVENLİ DURAKLATMA • ${step} TUR KAYDEDİLDİ"
-                            "queued" -> "GPT OTOMATİK DEVAM İÇİN SIRADA • ${step} TUR"
-                            else -> "GPT DEVAM EDİYOR • ${step}. TUR • GEMINI DENETLİYOR"
-                        }
-                        activity.runOnUiThread { status = message }
-                        finished = taskStatus in listOf("completed", "blocked", "failed", "paused", "cancelled")
-                    }
+                    providers = state
+                    status = if (state["openai"] == true && state["gemini"] == true)
+                        "SUNUCU BAĞLI • GPT VE GEMINI HAZIR"
+                    else "SUNUCU BAĞLI • API ANAHTARLARINI KONTROL EDİN"
                 }
             } catch (e: Exception) {
-                activity.runOnUiThread { status = "SUNUCUYA BAĞLANILAMADI • ADRESİ / API'Yİ KONTROL EDİN" }
+                activity.runOnUiThread {
+                    status = "SUNUCU BAĞLANTISI HATASI • ${e.message ?: "Bağlantıyı kontrol edin"}"
+                }
             }
         }.start()
     }
 
     fun startTask() {
         if (command.isBlank()) { status = "ÖNCE BİR TALİMAT YAZIN"; return }
+        val instruction = command.trim()
         Thread {
             try {
-                val json = JSONObject().put("instruction", command).toString()
+                val json = JSONObject().put("instruction", instruction).toString()
                 val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
-                val req = Request.Builder().url(BuildConfig.API_BASE_URL.trimEnd('/') + "/tasks").post(body).build()
-                http.newCall(req).execute().use { response ->
+                val req = Request.Builder()
+                    .url(BuildConfig.API_BASE_URL.trimEnd('/') + "/tasks")
+                    .post(body).build()
+                val id = http.newCall(req).execute().use { response ->
                     val result = JSONObject(response.body?.string() ?: "{}")
                     if (!response.isSuccessful) throw Exception(result.optString("error", "HTTP ${response.code}"))
-                    val id = result.getString("id")
-                    activity.runOnUiThread {
-                        taskId = id
-                        status = "GPT DEVİR ALDI • OTOMATİK DEVAM BAŞLADI"
+                    result.getString("id")
+                }
+                activity.runOnUiThread {
+                    taskId = id
+                    status = "EMİR GPT'YE İLETİLDİ • OTOMATİK DEVAM BAŞLADI"
+                }
+                while (true) {
+                    Thread.sleep(2500)
+                    val poll = Request.Builder()
+                        .url(BuildConfig.API_BASE_URL.trimEnd('/') + "/tasks/" + id)
+                        .get().build()
+                    val task = http.newCall(poll).execute().use { response ->
+                        if (!response.isSuccessful) throw Exception("Görev durumu alınamadı: HTTP ${response.code}")
+                        JSONObject(response.body?.string() ?: "{}")
                     }
-                    // Keep following the task automatically; do not wait for the user to press Continue.
-                    while (true) {
-                        Thread.sleep(2500)
-                        val poll = Request.Builder()
-                            .url(BuildConfig.API_BASE_URL.trimEnd('/') + "/tasks/" + id)
-                            .get().build()
-                        var finished = false
-                        http.newCall(poll).execute().use { taskResponse ->
-                            if (!taskResponse.isSuccessful) throw Exception("Görev durumu alınamadı: HTTP ${taskResponse.code}")
-                            val task = JSONObject(taskResponse.body?.string() ?: "{}")
-                            val taskStatus = task.optString("status", "running")
-                            val step = task.optInt("step", 0)
-                            val message = when (taskStatus) {
-                                "completed" -> "GÖREV TAMAMLANDI • ${step} TUR"
-                                "blocked" -> "GÖREV ENGELDE • AYRINTI İÇİN GÖREV KAYDINA BAKIN"
-                                "failed" -> "GÖREV HATASI • ${task.optString("error")}"
-                                "paused" -> "GÜVENLİ DURAKLATMA • ${step} TUR KAYDEDİLDİ"
-                                "queued" -> "GPT OTOMATİK DEVAM İÇİN SIRADA • ${step} TUR"
-                                else -> "GPT DEVAM EDİYOR • ${step}. TUR • GEMINI DENETLİYOR"
-                            }
-                            activity.runOnUiThread { status = message }
-                            finished = taskStatus in listOf("completed", "blocked", "failed", "paused", "cancelled")
-                        }
-                        if (finished) break
+                    val taskStatus = task.optString("status", "running")
+                    val step = task.optInt("step", 0)
+                    val message = when (taskStatus) {
+                        "completed" -> "GÖREV TAMAMLANDI • ${step} TUR"
+                        "blocked" -> "GÖREV ENGELDE • ${task.optString("error")}"
+                        "failed" -> "GÖREV HATASI • ${task.optString("error")}"
+                        "paused" -> "GÜVENLİ DURAKLATMA • ${step} TUR KAYDEDİLDİ"
+                        "queued" -> "GPT OTOMATİK DEVAM İÇİN SIRADA • ${step} TUR"
+                        "cancelled" -> "GÖREV İPTAL EDİLDİ"
+                        else -> "GPT DEVAM EDİYOR • ${step}. TUR • GEMINI DENETLİYOR"
                     }
+                    activity.runOnUiThread { status = message }
+                    if (taskStatus in listOf("completed", "blocked", "failed", "paused", "cancelled")) break
                 }
             } catch (e: Exception) {
-                activity.runOnUiThread { status = "GÖREV GÖNDERİLEMEDİ: ${e.message ?: "Bağlantı hatası"}" }
+                activity.runOnUiThread {
+                    status = "GÖREV GÖNDERİLEMEDİ • ${e.message ?: "Bağlantı hatası"}"
+                }
             }
         }.start()
     }

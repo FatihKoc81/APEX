@@ -12,7 +12,7 @@ android {
         targetSdk = 35
         versionCode = (System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1) + 100
         versionName = "0.1.0"
-        buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8787/\"")
+        buildConfigField("String", "API_BASE_URL", "\"${project.findProperty("NEXORA_API_BASE_URL") ?: "https://YOUR-NEXORA-SERVER.example/"}\"")
     }
     signingConfigs {
         create("stableDebug") {

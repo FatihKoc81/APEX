@@ -1,14 +1,20 @@
 package com.nexora.app
 
+import android.content.Intent
 import android.os.Bundle
+import android.speech.RecognizerIntent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -37,7 +43,27 @@ fun NexoraHome() {
     var command by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("SİSTEM HAZIR") }
     var menuExpanded by remember { mutableStateOf(false) }
-    var updateMessage by remember { mutableStateOf("Güncelleme denetimi henüz sunucuya bağlanmadı.") }
+    var addExpanded by remember { mutableStateOf(false) }
+    var attachmentLabel by remember { mutableStateOf("") }
+
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) attachmentLabel = "Fotoğraf: ${uri.lastPathSegment ?: "seçildi"}"
+    }
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) attachmentLabel = "Dosya: ${uri.lastPathSegment ?: "seçildi"}"
+    }
+    val cameraCapture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
+        attachmentLabel = if (bitmap != null) "Kamera görüntüsü eklendi" else "Kamera işlemi iptal edildi"
+    }
+    val speechInput = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val spoken = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+        if (!spoken.isNullOrBlank()) {
+            command = listOf(command, spoken).filter { it.isNotBlank() }.joinToString(" ")
+            status = "SESLİ TALİMAT METNE DÖNÜŞTÜRÜLDÜ"
+        } else if (result.resultCode == android.app.Activity.RESULT_OK) {
+            status = "SES ALGILANAMADI"
+        }
+    }
 
     MaterialTheme(colorScheme = darkColorScheme(
         background = Night, surface = Panel, primary = Cyan, secondary = Violet
@@ -53,7 +79,6 @@ fun NexoraHome() {
                 modifier = Modifier.fillMaxSize().padding(horizontal = outerPadding, vertical = if (compact) 8.dp else 12.dp),
                 verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp)
             ) {
-                // Header and top-right hamburger menu
                 Row(
                     modifier = Modifier.fillMaxWidth().height(if (compact) 54.dp else 64.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -79,7 +104,6 @@ fun NexoraHome() {
                                 leadingIcon = { Icon(Icons.Default.SystemUpdate, null) },
                                 onClick = {
                                     menuExpanded = false
-                                    updateMessage = "Güncelleme servisi yapılandırılmayı bekliyor."
                                     status = "GÜNCELLEME DENETİMİ HENÜZ ETKİN DEĞİL"
                                 }
                             )
@@ -87,7 +111,6 @@ fun NexoraHome() {
                     }
                 }
 
-                // Main command panel takes a bounded share of the screen.
                 Surface(
                     modifier = Modifier.weight(1.18f).fillMaxWidth(),
                     color = Panel.copy(alpha = .97f),
@@ -102,6 +125,7 @@ fun NexoraHome() {
                             fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
                         Text("Dört zihin. Tek hedef.", color = Color.White,
                             fontSize = if (compact) 20.sp else 23.sp, fontWeight = FontWeight.Bold)
+
                         OutlinedTextField(
                             value = command,
                             onValueChange = { command = it },
@@ -111,26 +135,71 @@ fun NexoraHome() {
                             placeholder = { Text("NEXORA'ya bir görev ver...") },
                             shape = RoundedCornerShape(15.dp)
                         )
-                        Button(
-                            onClick = {
-                                status = if (command.isBlank()) "ÖNCE BİR GÖREV YAZIN"
-                                else "SUNUCU BAĞLANTISI YAPILANDIRILMAYI BEKLİYOR"
-                            },
-                            modifier = Modifier.fillMaxWidth().height(if (compact) 48.dp else 54.dp),
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Icon(Icons.Default.Bolt, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("GÖREVİ BAŞLAT", fontWeight = FontWeight.Bold)
+                        if (attachmentLabel.isNotBlank()) {
+                            Text(attachmentLabel, color = Cyan, fontSize = 9.sp, maxLines = 1)
                         }
-                        Text(status, color = Cyan, fontSize = 10.sp, maxLines = 1)
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box {
+                                FilledTonalIconButton(
+                                    onClick = { addExpanded = true },
+                                    modifier = Modifier.size(if (compact) 42.dp else 48.dp)
+                                ) { Icon(Icons.Default.Add, contentDescription = "Ek ekle") }
+                                DropdownMenu(expanded = addExpanded, onDismissRequest = { addExpanded = false }) {
+                                    DropdownMenuItem(
+                                        text = { Text("Kamera") },
+                                        onClick = { addExpanded = false; cameraCapture.launch(null) }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Fotoğraflar") },
+                                        onClick = { addExpanded = false; photoPicker.launch("image/*") }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Dosyalar") },
+                                        onClick = { addExpanded = false; filePicker.launch(arrayOf("*/*")) }
+                                    )
+                                }
+                            }
+                            FilledTonalIconButton(
+                                onClick = {
+                                    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR")
+                                        putExtra(RecognizerIntent.EXTRA_PROMPT, "NEXORA için talimatınızı söyleyin")
+                                    }
+                                    try {
+                                        speechInput.launch(intent)
+                                    } catch (_: Exception) {
+                                        status = "BU CİHAZDA SES TANIMA HİZMETİ BULUNAMADI"
+                                    }
+                                },
+                                modifier = Modifier.size(if (compact) 42.dp else 48.dp)
+                            ) { Icon(Icons.Default.Mic, contentDescription = "Sesli talimat", tint = Cyan) }
+                            Spacer(Modifier.weight(1f))
+                            Button(
+                                onClick = {
+                                    status = if (command.isBlank() && attachmentLabel.isBlank()) "ÖNCE BİR TALİMAT VEYA EK EKLEYİN"
+                                    else "SUNUCU BAĞLANTISI YAPILANDIRILMAYI BEKLİYOR"
+                                },
+                                modifier = Modifier.weight(1.5f).height(if (compact) 46.dp else 52.dp),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Icon(Icons.Default.Bolt, null)
+                                Spacer(Modifier.width(6.dp))
+                                Text("GÖREVİ BAŞLAT", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            }
+                        }
+                        Text(status, color = Cyan, fontSize = 9.sp, maxLines = 1)
                     }
                 }
 
                 Text("YAPAY ZEKÂ EKİBİ", color = Color.White,
                     fontWeight = FontWeight.Bold, letterSpacing = 1.sp, fontSize = 14.sp)
 
-                // Four agents in a fixed 2x2 grid; no vertical scrolling.
                 Column(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -147,8 +216,7 @@ fun NexoraHome() {
 
                 Text(
                     "KALICI GÖREV MOTORU  •  CHECKPOINT  •  OTOMATİK DEVAM",
-                    color = Color.Gray, fontSize = 8.sp, letterSpacing = .5.sp,
-                    maxLines = 1
+                    color = Color.Gray, fontSize = 8.sp, letterSpacing = .5.sp, maxLines = 1
                 )
             }
         }
@@ -157,11 +225,7 @@ fun NexoraHome() {
 
 @Composable
 private fun ProviderTile(name: String, role: String, accent: Color, modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier.fillMaxHeight(),
-        color = Panel,
-        shape = RoundedCornerShape(16.dp)
-    ) {
+    Surface(modifier = modifier.fillMaxHeight(), color = Panel, shape = RoundedCornerShape(16.dp)) {
         Column(
             Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.Center

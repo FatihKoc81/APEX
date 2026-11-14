@@ -95,7 +95,30 @@ fun ApexHome() {
                     val id = result.getString("id")
                     activity.runOnUiThread {
                         taskId = id
-                        status = "GÖREV KUYRUĞA ALINDI • ID: ${id.take(8)}"
+                        status = "GPT DEVİR ALDI • OTOMATİK DEVAM BAŞLADI"
+                    }
+                    // Keep following the task automatically; do not wait for the user to press Continue.
+                    while (true) {
+                        Thread.sleep(2500)
+                        val poll = Request.Builder()
+                            .url(BuildConfig.API_BASE_URL.trimEnd('/') + "/tasks/" + id)
+                            .get().build()
+                        http.newCall(poll).execute().use { taskResponse ->
+                            if (!taskResponse.isSuccessful) throw Exception("Görev durumu alınamadı: HTTP ${taskResponse.code}")
+                            val task = JSONObject(taskResponse.body?.string() ?: "{}")
+                            val taskStatus = task.optString("status", "running")
+                            val step = task.optInt("step", 0)
+                            val message = when (taskStatus) {
+                                "completed" -> "GÖREV TAMAMLANDI • ${step} TUR"
+                                "blocked" -> "GÖREV ENGELDE • AYRINTI İÇİN GÖREV KAYDINA BAKIN"
+                                "failed" -> "GÖREV HATASI • ${task.optString("error")}"
+                                "paused" -> "GÜVENLİ DURAKLATMA • ${step} TUR KAYDEDİLDİ"
+                                "queued" -> "GPT OTOMATİK DEVAM İÇİN SIRADA • ${step} TUR"
+                                else -> "GPT DEVAM EDİYOR • ${step}. TUR • GEMINI DENETLİYOR"
+                            }
+                            activity.runOnUiThread { status = message }
+                            if (taskStatus in listOf("completed", "blocked", "failed", "paused", "cancelled")) break
+                        }
                     }
                 }
             } catch (e: Exception) {

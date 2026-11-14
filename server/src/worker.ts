@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { db, event } from "./db.js";
-import { askProvider, providerStatus, type ProviderName } from "./providers.js";
+import { askProvider, askOpenAIWithTools, providerStatus, type ProviderName } from "./providers.js";
 
 const MAX_STEPS = Number(process.env.MAX_STEPS_PER_TASK || 50);
 const MAX_MINUTES = Number(process.env.MAX_TASK_MINUTES || 180);
@@ -65,7 +65,7 @@ export async function workerLoop() {
           step++;
           event(task.id,"iteration","running",`GPT'ye devam talimatı gönderiliyor • tur ${step}/${MAX_STEPS}`);
           const prompt=`KULLANICININ DEĞİŞMEZ ANA EMRİ:\n${task.instruction}\n\nÖNCEKİ ÇALIŞMA NOTLARI:\n${cp.notes||"(İlk tur)"}\n\nÖNCEKİ TUR KAYITLARININ SON BÖLÜMÜ:\n${cp.transcript.slice(-6).join("\n\n").slice(-18000)||"(Yok)"}\n\nŞİMDİ DEVAM ET. Önceki cevabınla yetinme. Kalan işi somut biçimde ilerlet, kendi çıktını kontrol et, eksikleri düzelt. Bu otomatik döngüde kullanıcıdan "devam et" bekleme; görev tamamlanmadıysa bir sonraki turda devam edilmek üzere açık ve uygulanabilir not bırak. Yapmadığın dış işlemi yapılmış gibi söyleme. Harici araç/erişim gerektiren işte bunu açıkça belirt.\n\nYanıtının sonunda tam olarak bir durum etiketi ver:\nTASK_STATUS: CONTINUE (iş sürüyorsa)\nTASK_STATUS: COMPLETE (bütün istekler gerçekten bitip kontrol edildiyse)\nTASK_STATUS: BLOCKED (izin/erişim/insan kararı olmadan ilerlenemiyorsa).`;
-          const gpt=await askProvider("openai","Sen ChatGPT rolündeki ana yürütücüsün. Emir tamamlanana kadar her turda gerçekten devam et. Sadece plan yazıp durma.",prompt);
+          const gptText=await askOpenAIWithTools("Sen ChatGPT rolündeki ana yürütücüsün. Kullanıcı emrini gerçekten yerine getir. GitHub deposunda dosya okuma/yazma ve Actions iş akışı başlatma araçların var. Gerekiyorsa bu araçları çağır; yalnızca plan yazıp durma. Sadece yapılandırılmış APEX deposunda ve izin verilen proje dosyalarında işlem yap. Her değişiklikten sonra sonucu kontrol et. Yapmadığın işlemi yapılmış gibi söyleme.",prompt);\n          const gpt={provider:"openai" as const,text:gptText};
           cp.transcript.push(`TUR ${step} • GPT\n${gpt.text}`);
           event(task.id,"gpt","ok",`GPT tur ${step} yanıtını verdi`,"openai");
           const gem=await askProvider("gemini","Sen bağımsız kalite denetçisisin. GPT'nin yaptığı işi denetle; eksiklerini ve doğrulama gereksinimlerini belirt. Kullanıcı emrinin tamamlanıp tamamlanmadığını değerlendir.",`ANA EMİR:\n${task.instruction}\n\nGPT TUR ${step} ÇIKTISI:\n${gpt.text}\n\nÖNCEKİ NOTLAR:\n${cp.notes}\n\nKısa denetim yaz: somut eksikler, doğrulama ve devam için sonraki adım. Gerçekten bitmediyse tamamlandı deme.`);

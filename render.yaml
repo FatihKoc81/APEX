@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: apex-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: PORT
+        value: 10000
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: MAX_STEPS_PER_TASK
+        value: 24
+      - key: MAX_TASK_MINUTES
+        value: 90

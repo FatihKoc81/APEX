@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -129,6 +131,8 @@ fun ApexHome() {
                 verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp)
             ) {
                 Row(Modifier.fillMaxWidth().height(if (compact) 54.dp else 64.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Image(painter = painterResource(R.drawable.apex_logo), contentDescription = "APEX", modifier = Modifier.size(if (compact) 48.dp else 58.dp))
+                    Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
                         Text("APEX", fontSize = if (compact) 27.sp else 32.sp, fontWeight = FontWeight.Black, color = Color.White, letterSpacing = 3.sp)
                         Text("MULTI-INTELLIGENCE COMMAND", fontSize = 9.sp, color = Cyan, letterSpacing = 1.5.sp)
@@ -148,15 +152,30 @@ fun ApexHome() {
                     }
                 }
 
-                Surface(Modifier.weight(1.18f).fillMaxWidth(), color = Panel.copy(alpha = .97f), shape = RoundedCornerShape(22.dp)) {
+                Surface(Modifier.weight(0.72f).fillMaxWidth(), color = Panel.copy(alpha = .97f), shape = RoundedCornerShape(22.dp)) {
                     Column(Modifier.fillMaxSize().padding(if (compact) 14.dp else 18.dp), verticalArrangement = Arrangement.SpaceEvenly) {
                         Text("KOMUTA MERKEZİ", color = Cyan, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
                         Text("İki zihin. Tek hedef.", color = Color.White, fontSize = if (compact) 20.sp else 23.sp, fontWeight = FontWeight.Bold)
-                        OutlinedTextField(command, { command = it }, Modifier.fillMaxWidth(), minLines = 2, maxLines = 3, placeholder = { Text("APEX'ya bir görev ver...") }, shape = RoundedCornerShape(15.dp))
+                        Text("Görevlerini GPT ve Gemini birlikte ele alır.", color = Color.LightGray, fontSize = 13.sp)
+                        Text(status, color = Cyan, fontSize = 9.sp, maxLines = 2)
+                    }
+                }
+
+                Text("YAPAY ZEKÂ EKİBİ", color = Color.White, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, fontSize = 14.sp)
+                Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ProviderTile("CHATGPT", "Planlama • Koordinasyon", providers["openai"] == true, Cyan, Modifier.weight(1f))
+                        ProviderTile("GEMINI", "Analiz • Doğrulama", providers["gemini"] == true, Violet, Modifier.weight(1f))
+                    }
+
+                }
+                Surface(Modifier.fillMaxWidth(), color = Panel.copy(alpha = .99f), shape = RoundedCornerShape(20.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        OutlinedTextField(command, { command = it }, Modifier.fillMaxWidth(), minLines = 1, maxLines = 3, placeholder = { Text("APEX'ya bir görev ver...") }, shape = RoundedCornerShape(14.dp))
                         if (attachmentLabel.isNotBlank()) Text(attachmentLabel, color = Cyan, fontSize = 9.sp, maxLines = 1)
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Box {
-                                FilledTonalIconButton(onClick = { addExpanded = true }, modifier = Modifier.size(if (compact) 42.dp else 48.dp)) { Icon(Icons.Default.Add, "Ek ekle") }
+                                FilledTonalIconButton(onClick = { addExpanded = true }, modifier = Modifier.size(42.dp)) { Icon(Icons.Default.Add, "Ek ekle") }
                                 DropdownMenu(expanded = addExpanded, onDismissRequest = { addExpanded = false }) {
                                     DropdownMenuItem(text = { Text("Kamera") }, onClick = { addExpanded = false; cameraCapture.launch(null) })
                                     DropdownMenuItem(text = { Text("Fotoğraflar") }, onClick = { addExpanded = false; photoPicker.launch("image/*") })
@@ -170,23 +189,13 @@ fun ApexHome() {
                                     putExtra(RecognizerIntent.EXTRA_PROMPT, "APEX için talimatınızı söyleyin")
                                 }
                                 try { speechInput.launch(intent) } catch (_: Exception) { status = "SES TANIMA HİZMETİ BULUNAMADI" }
-                            }, modifier = Modifier.size(if (compact) 42.dp else 48.dp)) { Icon(Icons.Default.Mic, "Sesli talimat", tint = Cyan) }
+                            }, modifier = Modifier.size(42.dp)) { Icon(Icons.Default.Mic, "Sesli talimat", tint = Cyan) }
                             Spacer(Modifier.weight(1f))
-                            Button(onClick = { startTask() }, modifier = Modifier.weight(1.5f).height(if (compact) 46.dp else 52.dp), shape = RoundedCornerShape(14.dp)) {
+                            Button(onClick = { startTask() }, modifier = Modifier.height(46.dp), shape = RoundedCornerShape(14.dp)) {
                                 Icon(Icons.Default.Bolt, null); Spacer(Modifier.width(6.dp)); Text("GÖREVİ BAŞLAT", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                             }
                         }
-                        Text(status, color = Cyan, fontSize = 9.sp, maxLines = 2)
                     }
-                }
-
-                Text("YAPAY ZEKÂ EKİBİ", color = Color.White, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, fontSize = 14.sp)
-                Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ProviderTile("CHATGPT", "Planlama • Koordinasyon", providers["openai"] == true, Cyan, Modifier.weight(1f))
-                        ProviderTile("GEMINI", "Analiz • Doğrulama", providers["gemini"] == true, Violet, Modifier.weight(1f))
-                    }
-
                 }
                 Text(if (taskId.isBlank()) "GÖREV MOTORU • SUNUCU KUYRUĞU" else "AKTİF GÖREV • $taskId", color = Color.Gray, fontSize = 8.sp, maxLines = 1)
             }

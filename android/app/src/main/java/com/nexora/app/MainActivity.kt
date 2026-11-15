@@ -75,15 +75,22 @@ fun ApexHome() {
                     JSONArray(response.body?.string() ?: "[]")
                 }
                 val state = mutableMapOf("openai" to false, "gemini" to false)
+                val missing = mutableListOf<String>()
                 for (i in 0 until result.length()) {
                     val item = result.getJSONObject(i)
-                    state[item.optString("provider")] = item.optBoolean("configured")
+                    val provider = item.optString("provider")
+                    val configured = item.optBoolean("configured")
+                    if (provider in state.keys) state[provider] = configured
+                    if (!configured) {
+                        val expected = if (provider == "openai") "OPENAI_API_KEY" else "GEMINI_API_KEY"
+                        missing.add(expected)
+                    }
                 }
                 activity.runOnUiThread {
                     providers = state
                     status = if (state["openai"] == true && state["gemini"] == true)
                         "SUNUCU BAĞLI • GPT VE GEMINI HAZIR"
-                    else "SUNUCU BAĞLI • API ANAHTARLARINI KONTROL EDİN"
+                    else "SUNUCU BAĞLI • EKSİK: " + missing.joinToString(", ")
                 }
             } catch (e: Exception) {
                 activity.runOnUiThread {

@@ -4,9 +4,22 @@ dotenv.config();
 
 export type ProviderName = "openai" | "gemini";
 export type ProviderReply = { provider: ProviderName; text: string };
-const keys: Record<ProviderName,string|undefined> = {openai:process.env.OPENAI_API_KEY,gemini:process.env.GEMINI_API_KEY};
+function firstConfigured(names:string[]):{key?:string;envName?:string} {
+  for (const name of names) {
+    const value=process.env[name]?.trim();
+    if (value) return {key:value,envName:name};
+  }
+  return {};
+}
+const openaiConfig=firstConfigured(["OPENAI_API_KEY","OPENAI_KEY"]);
+const geminiConfig=firstConfigured(["GEMINI_API_KEY","GOOGLE_API_KEY","GOOGLE_GENERATIVE_AI_API_KEY"]);
+const keys: Record<ProviderName,string|undefined> = {openai:openaiConfig.key,gemini:geminiConfig.key};
 export function providerStatus() {
-  return (Object.keys(keys) as ProviderName[]).map(provider => ({provider,configured:Boolean(keys[provider])}));
+  return (Object.keys(keys) as ProviderName[]).map(provider => ({
+    provider,
+    configured:Boolean(keys[provider]),
+    sourceEnv:provider==="openai" ? openaiConfig.envName ?? null : geminiConfig.envName ?? null
+  }));
 }
 const githubTools = [
  {type:"function",function:{name:"read_file",description:"Read a text file from the configured GitHub repository. Only approved project paths are allowed.",parameters:{type:"object",properties:{path:{type:"string"}},required:["path"],additionalProperties:false}}},

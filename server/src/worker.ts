@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { db, event } from "./db.js";
-import { askProvider, askOpenAIWithTools, providerStatus, type ProviderName } from "./providers.js";
+import { askProvider, askOpenRouterWithTools, providerStatus, type ProviderName } from "./providers.js";
 
 const MAX_STEPS = Number(process.env.MAX_STEPS_PER_TASK || 50);
 const MAX_MINUTES = Number(process.env.MAX_TASK_MINUTES || 180);
@@ -51,10 +51,10 @@ export async function workerLoop() {
       let step=Number(task.step||0);
       const cp=readCheckpoint(task.result);
       db.prepare("UPDATE tasks SET status='running',updated_at=? WHERE id=?").run(new Date().toISOString(),task.id);
-      event(task.id,"orchestrator","running","GPT otomatik devam döngüsünü devraldı; Gemini denetçi olarak eşlik ediyor");
+      event(task.id,"orchestrator","running","OpenRouter otomatik devam döngüsünü devraldı; Gemini denetçi olarak eşlik ediyor");
       try {
         const configured=providerStatus().filter(x=>x.configured).map(x=>x.provider as ProviderName);
-        const missing=(["openai","gemini"] as ProviderName[]).filter(p=>!configured.includes(p));
+        const missing=(["openrouter","gemini"] as ProviderName[]).filter(p=>!configured.includes(p));
         if(missing.length) throw new Error(`Eksik API anahtarı: ${missing.join(", ")}`);
         let terminal=false;
         while(!terminal && step<MAX_STEPS) {
@@ -63,27 +63,27 @@ export async function workerLoop() {
           if(!state || ["cancelled","completed","blocked","failed"].includes(state.status)) { terminal=true; break; }
           if((Date.now()-started)/60000>MAX_MINUTES) throw new Error("Güvenli çalışma süresi sınırına ulaşıldı; kayıt korundu.");
           step++;
-          event(task.id,"iteration","running",`GPT'ye devam talimatı gönderiliyor • tur ${step}/${MAX_STEPS}`);
+          event(task.id,"iteration","running",`OpenRouter'a devam talimatı gönderiliyor • tur ${step}/${MAX_STEPS}`);
           const prompt=`KULLANICININ DEĞİŞMEZ ANA EMRİ:\n${task.instruction}\n\nÖNCEKİ ÇALIŞMA NOTLARI:\n${cp.notes||"(İlk tur)"}\n\nÖNCEKİ TUR KAYITLARININ SON BÖLÜMÜ:\n${cp.transcript.slice(-6).join("\n\n").slice(-18000)||"(Yok)"}\n\nŞİMDİ DEVAM ET. Önceki cevabınla yetinme. Kalan işi somut biçimde ilerlet, kendi çıktını kontrol et, eksikleri düzelt. Bu otomatik döngüde kullanıcıdan "devam et" bekleme; görev tamamlanmadıysa bir sonraki turda devam edilmek üzere açık ve uygulanabilir not bırak. Yapmadığın dış işlemi yapılmış gibi söyleme. Harici araç/erişim gerektiren işte bunu açıkça belirt.\n\nYanıtının sonunda tam olarak bir durum etiketi ver:\nTASK_STATUS: CONTINUE (iş sürüyorsa)\nTASK_STATUS: COMPLETE (bütün istekler gerçekten bitip kontrol edildiyse)\nTASK_STATUS: BLOCKED (izin/erişim/insan kararı olmadan ilerlenemiyorsa).`;
-          const gptText=await askOpenAIWithTools("Sen ChatGPT rolündeki ana yürütücüsün. Kullanıcı emrini gerçekten yerine getir. GitHub deposunda dosya okuma/yazma ve Actions iş akışı başlatma araçların var. Gerekiyorsa bu araçları çağır; yalnızca plan yazıp durma. Sadece yapılandırılmış APEX deposunda ve izin verilen proje dosyalarında işlem yap. Her değişiklikten sonra sonucu kontrol et. Yapmadığın işlemi yapılmış gibi söyleme.",prompt);
-          const gpt={provider:"openai" as const,text:gptText};
+          const gptText=await askOpenRouterWithTools("Sen ChatGPT rolündeki ana yürütücüsün. Kullanıcı emrini gerçekten yerine getir. GitHub deposunda dosya okuma/yazma ve Actions iş akışı başlatma araçların var. Gerekiyorsa bu araçları çağır; yalnızca plan yazıp durma. Sadece yapılandırılmış APEX deposunda ve izin verilen proje dosyalarında işlem yap. Her değişiklikten sonra sonucu kontrol et. Yapmadığın işlemi yapılmış gibi söyleme.",prompt);
+          const gpt={provider:"openrouter" as const,text:gptText};
           cp.transcript.push(`TUR ${step} • GPT\n${gpt.text}`);
-          event(task.id,"gpt","ok",`GPT tur ${step} yanıtını verdi`,"openai");
-          const gem=await askProvider("gemini","Sen bağımsız kalite denetçisisin. GPT'nin yaptığı işi denetle; eksiklerini ve doğrulama gereksinimlerini belirt. Kullanıcı emrinin tamamlanıp tamamlanmadığını değerlendir.",`ANA EMİR:\n${task.instruction}\n\nGPT TUR ${step} ÇIKTISI:\n${gpt.text}\n\nÖNCEKİ NOTLAR:\n${cp.notes}\n\nKısa denetim yaz: somut eksikler, doğrulama ve devam için sonraki adım. Gerçekten bitmediyse tamamlandı deme.`);
+          event(task.id,"gpt","ok",`OpenRouter tur ${step} yanıtını verdi`,"openrouter");
+          const gem=await askProvider("gemini","Sen bağımsız kalite denetçisisin. OpenRouter'ın yaptığı işi denetle; eksiklerini ve doğrulama gereksinimlerini belirt. Kullanıcı emrinin tamamlanıp tamamlanmadığını değerlendir.",`ANA EMİR:\n${task.instruction}\n\nGPT TUR ${step} ÇIKTISI:\n${gpt.text}\n\nÖNCEKİ NOTLAR:\n${cp.notes}\n\nKısa denetim yaz: somut eksikler, doğrulama ve devam için sonraki adım. Gerçekten bitmediyse tamamlandı deme.`);
           cp.transcript.push(`TUR ${step} • GEMINI DENETİMİ\n${gem.text}`);
           event(task.id,"gemini","ok",`Gemini tur ${step} denetimini tamamladı`,"gemini");
-          const review=await askProvider("openai","Sen son karar veren görev yöneticisisin. Gemini denetimini dikkate al. Erken tamamlandı deme. Görev tamamlanmadıysa CONTINUE seç.",`KULLANICI EMRİ:\n${task.instruction}\n\nGPT ÇIKTISI:\n${gpt.text}\n\nGEMINI DENETİMİ:\n${gem.text}\n\nÖnceki çalışma notları:\n${cp.notes}\n\nBir sonraki tur için kısa çalışma notlarını güncelle. Tüm isteklerin gerçekten tamamlanıp kontrol edildiğine dair kanıt yoksa TASK_STATUS: CONTINUE yaz. Dış erişim/izin olmadan ilerlemek mümkün değilse TASK_STATUS: BLOCKED yaz. Yalnızca tüm iş tamam ve doğrulanmışsa TASK_STATUS: COMPLETE yaz. Son satırda durum etiketini yaz.`);
+          const review=await askProvider("openrouter","Sen son karar veren görev yöneticisisin. Gemini denetimini dikkate al. Erken tamamlandı deme. Görev tamamlanmadıysa CONTINUE seç.",`KULLANICI EMRİ:\n${task.instruction}\n\nGPT ÇIKTISI:\n${gpt.text}\n\nGEMINI DENETİMİ:\n${gem.text}\n\nÖnceki çalışma notları:\n${cp.notes}\n\nBir sonraki tur için kısa çalışma notlarını güncelle. Tüm isteklerin gerçekten tamamlanıp kontrol edildiğine dair kanıt yoksa TASK_STATUS: CONTINUE yaz. Dış erişim/izin olmadan ilerlemek mümkün değilse TASK_STATUS: BLOCKED yaz. Yalnızca tüm iş tamam ve doğrulanmışsa TASK_STATUS: COMPLETE yaz. Son satırda durum etiketini yaz.`);
           cp.notes=review.text;
-          cp.transcript.push(`TUR ${step} • GPT DEVAM KARARI\n${review.text}`);
+          cp.transcript.push(`TUR ${step} • OPENROUTER DEVAM KARARI\n${review.text}`);
           saveCheckpoint(task.id,step,cp);
           if(/TASK_STATUS:\s*BLOCKED/i.test(review.text)) {
             db.prepare("UPDATE tasks SET status='blocked',error=?,updated_at=? WHERE id=?").run("İnsan onayı veya harici erişim gerekiyor. Ayrıntı görev kaydında.",new Date().toISOString(),task.id);
             event(task.id,"blocked","warning","Görev erişim/izin bekliyor"); terminal=true;
           } else if(/TASK_STATUS:\s*COMPLETE/i.test(review.text)) {
             db.prepare("UPDATE tasks SET status='completed',error=NULL,updated_at=? WHERE id=?").run(new Date().toISOString(),task.id);
-            event(task.id,"completion","ok","GPT ve Gemini kontrolünden sonra görev tamamlandı olarak işaretlendi"); terminal=true;
+            event(task.id,"completion","ok","OpenRouter ve Gemini kontrolünden sonra görev tamamlandı olarak işaretlendi"); terminal=true;
           } else {
-            event(task.id,"continue","running","GPT'ye otomatik devam turu için yeni talimat gönderilecek");
+            event(task.id,"continue","running","OpenRouter'a otomatik devam turu için yeni talimat gönderilecek");
             await sleep(1200);
           }
         }

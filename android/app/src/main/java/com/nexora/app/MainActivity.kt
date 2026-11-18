@@ -81,6 +81,8 @@ fun ApexHome() {
     var attachmentLabel by remember { mutableStateOf("") }
     var providers by remember { mutableStateOf(mapOf("openai" to false, "openrouter" to false, "gemini" to false, "kimi" to false, "deepseek" to false)) }
     var taskId by remember { mutableStateOf("") }
+    var chatMessages by remember { mutableStateOf(listOf<Pair<String, String>>()) }
+    var voiceEnabled by remember { mutableStateOf(true) }
 
     fun refreshProviders() {
         Thread {
@@ -216,27 +218,47 @@ fun ApexHome() {
                     }
                 }
 
-                Surface(Modifier.weight(0.72f).fillMaxWidth(), color = Panel.copy(alpha = .97f), shape = RoundedCornerShape(22.dp)) {
-                    Column(Modifier.fillMaxSize().padding(if (compact) 14.dp else 18.dp), verticalArrangement = Arrangement.SpaceEvenly) {
-                        Text("KOMUTA MERKEZİ", color = Cyan, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
-                        Text("Beş uzman. Tek hedef.", color = Color.White, fontSize = if (compact) 20.sp else 23.sp, fontWeight = FontWeight.Bold)
-                        Text("OpenAI, Gemini ve ücretsiz uzman modeller birlikte çalışır.", color = Color.LightGray, fontSize = 13.sp)
-                        Text(status, color = Cyan, fontSize = 9.sp, maxLines = 2)
-                    }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("APEX EKİBİ", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Spacer(Modifier.weight(1f))
+                    Text(status, color = Cyan, fontSize = 9.sp, maxLines = 1)
                 }
-
-                Text("YAPAY ZEKÂ EKİBİ", color = Color.White, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, fontSize = 14.sp)
-                Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ProviderTile("OPENAI", "Baş mimar • Akıl yürütme", providers["openai"] == true, Cyan, Modifier.weight(1f))
-                        ProviderTile("GEMINI", "Analiz • Doğrulama", providers["gemini"] == true, Violet, Modifier.weight(1f))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    ProviderPill("GPT", providers["openai"] == true)
+                    ProviderPill("Gemini", providers["gemini"] == true)
+                    ProviderPill("Router", providers["openrouter"] == true)
+                    ProviderPill("Kimi", providers["kimi"] == true)
+                    ProviderPill("DeepSeek", providers["deepseek"] == true)
+                }
+                LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                    if (chatMessages.isEmpty()) item {
+                        Column(Modifier.fillMaxWidth().padding(top = 48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Image(painter = painterResource(R.drawable.apex_logo), contentDescription = "APEX", modifier = Modifier.size(68.dp))
+                            Spacer(Modifier.height(18.dp))
+                            Text("Merhaba, ben APEX.", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Nasıl yardımcı olabilirim?", color = Color.LightGray, fontSize = 13.sp)
+                        }
                     }
-                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ProviderTile("OPENROUTER", "Ana yürütücü • Ücretsiz rota", providers["openrouter"] == true, Cyan, Modifier.weight(1f))
-                        ProviderTile("KIMI", "Uzun bağlam • Ücretsiz model", providers["kimi"] == true, Violet, Modifier.weight(1f))
-                        ProviderTile("DEEPSEEK", "Kod inceleme • Ücretsiz model", providers["deepseek"] == true, Cyan, Modifier.weight(1f))
+                    items(chatMessages) { message ->
+                        if (message.first == "user") {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                Surface(color = Color(0xFF303642), shape = RoundedCornerShape(20.dp), modifier = Modifier.widthIn(max = 310.dp)) {
+                                    Text(message.second, Modifier.padding(15.dp), color = Color.White, fontSize = 15.sp, lineHeight = 22.sp)
+                                }
+                            }
+                        } else {
+                            Column(Modifier.fillMaxWidth().padding(end = 8.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Image(painter = painterResource(R.drawable.apex_logo), contentDescription = "APEX", modifier = Modifier.size(26.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("APEX", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Spacer(Modifier.weight(1f))
+                                    IconButton(onClick = { (activity as? MainActivity)?.speak(message.second) }) { Icon(Icons.Default.Mic, "Yanıtı sesli oku", tint = Cyan) }
+                                }
+                                Text(message.second, color = Color(0xFFE6E8ED), fontSize = 14.sp, lineHeight = 23.sp)
+                            }
+                        }
                     }
-
                 }
                 Surface(Modifier.fillMaxWidth(), color = Panel.copy(alpha = .99f), shape = RoundedCornerShape(20.dp)) {
                     Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -259,6 +281,9 @@ fun ApexHome() {
                                 }
                                 try { speechInput.launch(intent) } catch (_: Exception) { status = "SES TANIMA HİZMETİ BULUNAMADI" }
                             }, modifier = Modifier.size(42.dp)) { Icon(Icons.Default.Mic, "Sesli talimat", tint = Cyan) }
+                            IconButton(onClick = { voiceEnabled = !voiceEnabled }) {
+                                Icon(Icons.Default.Mic, "Sesli yanıtı aç/kapat", tint = if (voiceEnabled) Cyan else Color.Gray)
+                            }
                             Spacer(Modifier.weight(1f))
                             Button(onClick = { startTask() }, modifier = Modifier.height(46.dp), shape = RoundedCornerShape(14.dp)) {
                                 Icon(Icons.Default.Bolt, null); Spacer(Modifier.width(6.dp)); Text("GÖREVİ BAŞLAT", fontWeight = FontWeight.Bold, fontSize = 11.sp)
@@ -285,6 +310,17 @@ private fun ProviderTile(name: String, role: String, configured: Boolean, accent
             Text(role, color = Color.LightGray, fontSize = 9.sp, maxLines = 2)
             Spacer(Modifier.height(4.dp))
             Text(if (configured) "API HAZIR" else "API ANAHTARI EKSİK", color = if (configured) Color(0xFF48D597) else Color.Gray, fontSize = 8.sp, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun ProviderPill(name: String, ready: Boolean) {
+    Surface(color = if (ready) Color(0x223CCB91) else Color(0x222F3542), shape = RoundedCornerShape(50)) {
+        Row(Modifier.padding(horizontal = 6.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(5.dp).background(if (ready) Color(0xFF48D597) else Color.Gray, RoundedCornerShape(50)))
+            Spacer(Modifier.width(4.dp))
+            Text(name, color = if (ready) Color(0xFFB8F3D8) else Color.LightGray, fontSize = 8.sp, maxLines = 1)
         }
     }
 }

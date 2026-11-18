@@ -11,10 +11,16 @@ services:
         value: 22
       - key: PORT
         value: 10000
-      - key: OPENAI_API_KEY
+      - key: OPENROUTER_API_KEY
         sync: false
+      - key: OPENROUTER_MODEL
+        value: openrouter/free
       - key: GEMINI_API_KEY
         sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: APP_URL
+        value: https://github.com/FatihKoc81/APEX
       - key: MAX_STEPS_PER_TASK
         value: 24
       - key: MAX_TASK_MINUTES

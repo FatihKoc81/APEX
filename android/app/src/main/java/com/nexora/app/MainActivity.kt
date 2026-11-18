@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -270,33 +271,66 @@ fun ApexHome() {
                         }
                     }
                 }
-                Surface(Modifier.fillMaxWidth(), color = Panel.copy(alpha = .99f), shape = RoundedCornerShape(20.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        OutlinedTextField(command, { command = it }, Modifier.fillMaxWidth(), minLines = 1, maxLines = 3, placeholder = { Text("APEX'ya bir görev ver...") }, shape = RoundedCornerShape(14.dp))
-                        if (attachmentLabel.isNotBlank()) Text(attachmentLabel, color = Cyan, fontSize = 9.sp, maxLines = 1)
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Surface(Modifier.fillMaxWidth(), color = Panel.copy(alpha = .99f), shape = RoundedCornerShape(30.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        if (attachmentLabel.isNotBlank()) Text(attachmentLabel, color = Cyan, fontSize = 10.sp, maxLines = 1)
+                        Row(
+                            Modifier.fillMaxWidth().background(Color(0xFF10141E), RoundedCornerShape(25.dp)).padding(horizontal = 12.dp, vertical = 15.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
                             Box {
-                                FilledTonalIconButton(onClick = { addExpanded = true }, modifier = Modifier.size(42.dp)) { Icon(Icons.Default.Add, "Ek ekle") }
+                                FilledTonalIconButton(onClick = { addExpanded = true }, modifier = Modifier.size(42.dp)) { Icon(Icons.Default.Add, "Dosya veya fotoğraf ekle") }
                                 DropdownMenu(expanded = addExpanded, onDismissRequest = { addExpanded = false }) {
                                     DropdownMenuItem(text = { Text("Kamera") }, onClick = { addExpanded = false; cameraCapture.launch(null) })
                                     DropdownMenuItem(text = { Text("Fotoğraflar") }, onClick = { addExpanded = false; photoPicker.launch("image/*") })
                                     DropdownMenuItem(text = { Text("Dosyalar") }, onClick = { addExpanded = false; filePicker.launch(arrayOf("*/*")) })
                                 }
                             }
-                            FilledTonalIconButton(onClick = {
+                            Box(Modifier.weight(1f)) {
+                                if (command.isBlank()) Text("Mesaj yazın veya basılı tutup konuşun", color = Color(0xFFB7BAC5), fontSize = 14.sp)
+                                BasicTextField(
+                                    value = command,
+                                    onValueChange = { command = it },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 15.sp),
+                                    maxLines = 4
+                                )
+                            }
+                            IconButton(onClick = {
                                 val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                                     putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR")
-                                    putExtra(RecognizerIntent.EXTRA_PROMPT, "APEX için talimatınızı söyleyin")
+                                    putExtra(RecognizerIntent.EXTRA_PROMPT, "Konuşmaya başlayın")
                                 }
                                 try { speechInput.launch(intent) } catch (_: Exception) { status = "SES TANIMA HİZMETİ BULUNAMADI" }
-                            }, modifier = Modifier.size(42.dp)) { Icon(Icons.Default.Mic, "Sesli talimat", tint = Cyan) }
-                            IconButton(onClick = { voiceEnabled = !voiceEnabled }) {
-                                Icon(Icons.Default.Mic, "Sesli yanıtı aç/kapat", tint = if (voiceEnabled) Cyan else Color.Gray)
+                            }) { Icon(Icons.Default.Mic, "Konuşarak yaz", tint = Cyan) }
+                            Surface(
+                                color = Color.White,
+                                shape = RoundedCornerShape(50),
+                                modifier = Modifier.size(44.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        "≋",
+                                        color = Color(0xFF171923),
+                                        fontSize = 27.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(bottom = 3.dp)
+                                    )
+                                }
                             }
+                        }
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text("＋", color = Color.LightGray, fontSize = 12.sp)
+                            Spacer(Modifier.width(5.dp))
+                            Text("Basılı tutup konuşun", color = Color(0xFF9EA3B1), fontSize = 11.sp)
                             Spacer(Modifier.weight(1f))
-                            Button(onClick = { startTask() }, modifier = Modifier.height(46.dp), shape = RoundedCornerShape(14.dp)) {
-                                Icon(Icons.Default.Bolt, null); Spacer(Modifier.width(6.dp)); Text("GÖREVİ BAŞLAT", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            TextButton(onClick = { voiceEnabled = !voiceEnabled }) {
+                                Text(if (voiceEnabled) "Sesli yanıt açık" else "Sesli yanıt kapalı", color = if (voiceEnabled) Cyan else Color.Gray, fontSize = 10.sp)
+                            }
+                            Button(onClick = { startTask() }, modifier = Modifier.height(40.dp), shape = RoundedCornerShape(20.dp), enabled = command.isNotBlank()) {
+                                Icon(Icons.Default.Bolt, null); Spacer(Modifier.width(5.dp)); Text("Gönder", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                             }
                         }
                     }

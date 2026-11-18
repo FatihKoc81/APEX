@@ -11,6 +11,14 @@ services:
         value: 22
       - key: PORT
         value: 10000
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-6-luna
+      - key: KIMI_MODEL
+        value: ""
+      - key: DEEPSEEK_MODEL
+        value: ""
       - key: OPENROUTER_API_KEY
         sync: false
       - key: OPENROUTER_MODEL

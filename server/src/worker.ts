@@ -72,6 +72,17 @@ export async function workerLoop() {
           const gem=await askProvider("gemini","Sen bağımsız kalite denetçisisin. OpenRouter'ın yaptığı işi denetle; eksiklerini ve doğrulama gereksinimlerini belirt. Kullanıcı emrinin tamamlanıp tamamlanmadığını değerlendir.",`ANA EMİR:\n${task.instruction}\n\nGPT TUR ${step} ÇIKTISI:\n${gpt.text}\n\nÖNCEKİ NOTLAR:\n${cp.notes}\n\nKısa denetim yaz: somut eksikler, doğrulama ve devam için sonraki adım. Gerçekten bitmediyse tamamlandı deme.`);
           cp.transcript.push(`TUR ${step} • GEMINI DENETİMİ\n${gem.text}`);
           event(task.id,"gemini","ok",`Gemini tur ${step} denetimini tamamladı`,"gemini");
+          const optionalReviewers: ProviderName[] = ["openai","kimi","deepseek"];
+          for (const reviewer of optionalReviewers) {
+            if (!configured.includes(reviewer)) continue;
+            try {
+              const answer = await askProvider(reviewer,"Sen bağımsız bir uzman denetçisin. Somut hata, risk ve eksik doğrulamaları bildir.",`ANA EMİR:\n${task.instruction}\n\nOPENROUTER ÇIKTISI:\n${gpt.text}\n\nGEMINI DENETİMİ:\n${gem.text}`);
+              cp.transcript.push(`TUR ${step} • ${reviewer.toUpperCase()} DENETİMİ\n${answer.text}`);
+              event(task.id,reviewer,"ok",`${reviewer} tur ${step} denetimini tamamladı`,reviewer);
+            } catch (err:any) {
+              event(task.id,reviewer,"warning",`${reviewer} denetimi başarısız: ${err.message || String(err)}`,reviewer);
+            }
+          }
           const review=await askProvider("openrouter","Sen son karar veren görev yöneticisisin. Gemini denetimini dikkate al. Erken tamamlandı deme. Görev tamamlanmadıysa CONTINUE seç.",`KULLANICI EMRİ:\n${task.instruction}\n\nGPT ÇIKTISI:\n${gpt.text}\n\nGEMINI DENETİMİ:\n${gem.text}\n\nÖnceki çalışma notları:\n${cp.notes}\n\nBir sonraki tur için kısa çalışma notlarını güncelle. Tüm isteklerin gerçekten tamamlanıp kontrol edildiğine dair kanıt yoksa TASK_STATUS: CONTINUE yaz. Dış erişim/izin olmadan ilerlemek mümkün değilse TASK_STATUS: BLOCKED yaz. Yalnızca tüm iş tamam ve doğrulanmışsa TASK_STATUS: COMPLETE yaz. Son satırda durum etiketini yaz.`);
           cp.notes=review.text;
           cp.transcript.push(`TUR ${step} • OPENROUTER DEVAM KARARI\n${review.text}`);

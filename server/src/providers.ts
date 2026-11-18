@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import { executeGithubTool } from "./github.js";
 dotenv.config();
 
-export type ProviderName = "openrouter" | "gemini";
+export type ProviderName = "openai" | "openrouter" | "gemini" | "kimi" | "deepseek";
 export type ProviderReply = { provider: ProviderName; text: string };
 function firstConfigured(names: string[]) {
   for (const name of names) {
@@ -11,16 +11,21 @@ function firstConfigured(names: string[]) {
   }
   return {};
 }
+const openaiConfig = firstConfigured(["OPENAI_API_KEY"]);
 const openrouterConfig = firstConfigured(["OPENROUTER_API_KEY"]);
+const kimiModel = process.env.KIMI_MODEL?.trim() || "";
+const deepseekModel = process.env.DEEPSEEK_MODEL?.trim() || "";
 const geminiConfig = firstConfigured(["GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY"]);
 const keys: Record<ProviderName, string | undefined> = {
-  openrouter: openrouterConfig.key,
-  gemini: geminiConfig.key
+  openai: openaiConfig.key, openrouter: openrouterConfig.key, gemini: geminiConfig.key,
+  kimi: openrouterConfig.key && kimiModel.endsWith(":free") ? openrouterConfig.key : undefined,
+  deepseek: openrouterConfig.key && deepseekModel.endsWith(":free") ? openrouterConfig.key : undefined
 };
 export function providerStatus() {
   return (Object.keys(keys) as ProviderName[]).map(provider => ({
     provider, configured: Boolean(keys[provider]),
-    sourceEnv: provider === "openrouter" ? openrouterConfig.envName ?? null : geminiConfig.envName ?? null
+    sourceEnv: provider === "openai" ? openaiConfig.envName ?? null : provider === "gemini" ? geminiConfig.envName ?? null : openrouterConfig.envName ?? null,
+    model: provider === "openai" ? (process.env.OPENAI_MODEL || "gpt-6-luna") : provider === "gemini" ? (process.env.GEMINI_MODEL || "gemini-2.5-flash") : provider === "openrouter" ? OPENROUTER_MODEL : provider === "kimi" ? (kimiModel || null) : (deepseekModel || null)
   }));
 }
 const githubTools = [
@@ -66,10 +71,10 @@ export async function askOpenRouterWithTools(system: string, prompt: string): Pr
 export async function askProvider(provider: ProviderName, system: string, prompt: string): Promise<ProviderReply> {
  const key=keys[provider];
  if (!key) throw new Error(`${provider} API anahtarı yapılandırılmamış`);
- const url=provider==="openrouter" ? OPENROUTER_URL : "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
- const model=provider==="openrouter" ? OPENROUTER_MODEL : (process.env.GEMINI_MODEL || "gemini-2.5-flash");
+ const url=provider==="openai" ? "https://api.openai.com/v1/chat/completions" : provider==="gemini" ? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions" : OPENROUTER_URL;
+ const model=provider==="openai" ? (process.env.OPENAI_MODEL || "gpt-6-luna") : provider==="gemini" ? (process.env.GEMINI_MODEL || "gemini-2.5-flash") : provider==="kimi" ? kimiModel : provider==="deepseek" ? deepseekModel : OPENROUTER_MODEL;
  const headers: Record<string,string>={authorization:`Bearer ${key}`,"content-type":"application/json"};
- if (provider==="openrouter") {
+ if (provider==="openrouter" || provider==="kimi" || provider==="deepseek") {
    headers["HTTP-Referer"]=process.env.APP_URL || "https://github.com/FatihKoc81/APEX";
    headers["X-Title"]="APEX";
  }

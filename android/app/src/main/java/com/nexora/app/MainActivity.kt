@@ -204,7 +204,7 @@ fun ApexHome() {
         BoxWithConstraints(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF101A31), Night)))) {
             val compact = maxHeight < 700.dp
             Column(
-                modifier = Modifier.fillMaxSize().padding(horizontal = if (compact) 14.dp else 20.dp, vertical = if (compact) 8.dp else 12.dp),
+                modifier = Modifier.fillMaxSize().padding(start = if (compact) 14.dp else 20.dp, end = if (compact) 14.dp else 20.dp, top = if (compact) 8.dp else 12.dp, bottom = 0.dp),
                 verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp)
             ) {
                 Row(Modifier.fillMaxWidth().height(if (compact) 54.dp else 64.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -271,72 +271,57 @@ fun ApexHome() {
                         }
                     }
                 }
-                Surface(Modifier.fillMaxWidth(), color = Panel.copy(alpha = .99f), shape = RoundedCornerShape(30.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        if (attachmentLabel.isNotBlank()) Text(attachmentLabel, color = Cyan, fontSize = 10.sp, maxLines = 1)
-                        Row(
-                            Modifier.fillMaxWidth().background(Color(0xFF10141E), RoundedCornerShape(25.dp)).padding(horizontal = 12.dp, vertical = 15.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Box {
-                                FilledTonalIconButton(onClick = { addExpanded = true }, modifier = Modifier.size(42.dp)) { Icon(Icons.Default.Add, "Dosya veya fotoğraf ekle") }
-                                DropdownMenu(expanded = addExpanded, onDismissRequest = { addExpanded = false }) {
-                                    DropdownMenuItem(text = { Text("Kamera") }, onClick = { addExpanded = false; cameraCapture.launch(null) })
-                                    DropdownMenuItem(text = { Text("Fotoğraflar") }, onClick = { addExpanded = false; photoPicker.launch("image/*") })
-                                    DropdownMenuItem(text = { Text("Dosyalar") }, onClick = { addExpanded = false; filePicker.launch(arrayOf("*/*")) })
-                                }
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Panel.copy(alpha = .99f),
+                    shape = RoundedCornerShape(30.dp)
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 92.dp).padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box {
+                            FilledTonalIconButton(onClick = { addExpanded = true }, modifier = Modifier.size(44.dp)) {
+                                Icon(Icons.Default.Add, "Dosya veya fotoğraf ekle")
                             }
-                            Box(Modifier.weight(1f)) {
-                                if (command.isBlank()) Text("Mesaj yazın veya basılı tutup konuşun", color = Color(0xFFB7BAC5), fontSize = 14.sp)
-                                BasicTextField(
-                                    value = command,
-                                    onValueChange = { command = it },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 15.sp),
-                                    maxLines = 4
-                                )
-                            }
-                            IconButton(onClick = {
-                                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR")
-                                    putExtra(RecognizerIntent.EXTRA_PROMPT, "Konuşmaya başlayın")
-                                }
-                                try { speechInput.launch(intent) } catch (_: Exception) { status = "SES TANIMA HİZMETİ BULUNAMADI" }
-                            }) { Icon(Icons.Default.Mic, "Konuşarak yaz", tint = Cyan) }
-                            Surface(
-                                color = Color.White,
-                                shape = RoundedCornerShape(50),
-                                modifier = Modifier.size(44.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        "≋",
-                                        color = Color(0xFF171923),
-                                        fontSize = 27.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(bottom = 3.dp)
-                                    )
-                                }
+                            DropdownMenu(expanded = addExpanded, onDismissRequest = { addExpanded = false }) {
+                                DropdownMenuItem(text = { Text("Kamera") }, onClick = { addExpanded = false; cameraCapture.launch(null) })
+                                DropdownMenuItem(text = { Text("Fotoğraflar") }, onClick = { addExpanded = false; photoPicker.launch("image/*") })
+                                DropdownMenuItem(text = { Text("Dosyalar") }, onClick = { addExpanded = false; filePicker.launch(arrayOf("*/*")) })
                             }
                         }
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text("＋", color = Color.LightGray, fontSize = 12.sp)
-                            Spacer(Modifier.width(5.dp))
-                            Text("Basılı tutup konuşun", color = Color(0xFF9EA3B1), fontSize = 11.sp)
-                            Spacer(Modifier.weight(1f))
-                            TextButton(onClick = { voiceEnabled = !voiceEnabled }) {
-                                Text(if (voiceEnabled) "Sesli yanıt açık" else "Sesli yanıt kapalı", color = if (voiceEnabled) Cyan else Color.Gray, fontSize = 10.sp)
+                        Box(Modifier.weight(1f).padding(vertical = 8.dp)) {
+                            if (command.isBlank()) Text("Mesaj yazın veya konuşun", color = Color(0xFFB7BAC5), fontSize = 15.sp)
+                            BasicTextField(
+                                value = command,
+                                onValueChange = { command = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 15.sp),
+                                maxLines = 4
+                            )
+                        }
+                        IconButton(onClick = {
+                            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR")
+                                putExtra(RecognizerIntent.EXTRA_PROMPT, "Konuşmaya başlayın")
                             }
-                            Button(onClick = { startTask() }, modifier = Modifier.height(40.dp), shape = RoundedCornerShape(20.dp), enabled = command.isNotBlank()) {
-                                Icon(Icons.Default.Bolt, null); Spacer(Modifier.width(5.dp)); Text("Gönder", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            try { speechInput.launch(intent) } catch (_: Exception) { status = "SES TANIMA HİZMETİ BULUNAMADI" }
+                        }) { Icon(Icons.Default.Mic, "Sesli mesaj", tint = Cyan) }
+                        Surface(
+                            color = Color.White,
+                            shape = RoundedCornerShape(50),
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            IconButton(onClick = {
+                                if (command.isNotBlank()) startTask() else voiceEnabled = !voiceEnabled
+                            }) {
+                                Text("≋", color = Color(0xFF171923), fontSize = 27.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
-                }
-                Text(if (taskId.isBlank()) "GÖREV MOTORU • SUNUCU KUYRUĞU" else "AKTİF GÖREV • $taskId", color = Color.Gray, fontSize = 8.sp, maxLines = 1)
-            }
+                }            }
         }
     }
 }

@@ -61,7 +61,7 @@ fun ApexHome() {
     var menuExpanded by remember { mutableStateOf(false) }
     var addExpanded by remember { mutableStateOf(false) }
     var attachmentLabel by remember { mutableStateOf("") }
-    var providers by remember { mutableStateOf(mapOf("openrouter" to false, "gemini" to false)) }
+    var providers by remember { mutableStateOf(mapOf("openai" to false, "openrouter" to false, "gemini" to false, "kimi" to false, "deepseek" to false)) }
     var taskId by remember { mutableStateOf("") }
 
     fun refreshProviders() {
@@ -74,7 +74,7 @@ fun ApexHome() {
                     if (!response.isSuccessful) throw Exception("Sağlayıcı durumu alınamadı: HTTP ${response.code}")
                     JSONArray(response.body?.string() ?: "[]")
                 }
-                val state = mutableMapOf("openrouter" to false, "gemini" to false)
+                val state = mutableMapOf("openai" to false, "openrouter" to false, "gemini" to false, "kimi" to false, "deepseek" to false)
                 val missing = mutableListOf<String>()
                 for (i in 0 until result.length()) {
                     val item = result.getJSONObject(i)
@@ -82,14 +82,14 @@ fun ApexHome() {
                     val configured = item.optBoolean("configured")
                     if (provider in state.keys) state[provider] = configured
                     if (!configured) {
-                        val expected = if (provider == "openrouter") "OPENAI_API_KEY" else "GEMINI_API_KEY"
+                        val expected = when(provider) { "openai" -> "OPENAI_API_KEY"; "openrouter" -> "OPENROUTER_API_KEY"; "gemini" -> "GEMINI_API_KEY"; else -> provider.uppercase() + "_MODEL (:free gerekli)" }
                         missing.add(expected)
                     }
                 }
                 activity.runOnUiThread {
                     providers = state
-                    status = if (state["openrouter"] == true && state["gemini"] == true)
-                        "SUNUCU BAĞLI • OPENROUTER VE GEMINI HAZIR"
+                    status = if (state["openai"] == true && state["openrouter"] == true && state["gemini"] == true)
+                        "SUNUCU BAĞLI • OPENAI, OPENROUTER VE GEMINI HAZIR"
                     else "SUNUCU BAĞLI • EKSİK: " + missing.joinToString(", ")
                 }
             } catch (e: Exception) {
@@ -201,8 +201,8 @@ fun ApexHome() {
                 Surface(Modifier.weight(0.72f).fillMaxWidth(), color = Panel.copy(alpha = .97f), shape = RoundedCornerShape(22.dp)) {
                     Column(Modifier.fillMaxSize().padding(if (compact) 14.dp else 18.dp), verticalArrangement = Arrangement.SpaceEvenly) {
                         Text("KOMUTA MERKEZİ", color = Cyan, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
-                        Text("İki zihin. Tek hedef.", color = Color.White, fontSize = if (compact) 20.sp else 23.sp, fontWeight = FontWeight.Bold)
-                        Text("Görevlerini GPT ve Gemini birlikte ele alır.", color = Color.LightGray, fontSize = 13.sp)
+                        Text("Beş uzman. Tek hedef.", color = Color.White, fontSize = if (compact) 20.sp else 23.sp, fontWeight = FontWeight.Bold)
+                        Text("OpenAI, Gemini ve ücretsiz uzman modeller birlikte çalışır.", color = Color.LightGray, fontSize = 13.sp)
                         Text(status, color = Cyan, fontSize = 9.sp, maxLines = 2)
                     }
                 }
@@ -210,8 +210,13 @@ fun ApexHome() {
                 Text("YAPAY ZEKÂ EKİBİ", color = Color.White, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, fontSize = 14.sp)
                 Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ProviderTile("OPENROUTER", "Planlama • Koordinasyon", providers["openrouter"] == true, Cyan, Modifier.weight(1f))
+                        ProviderTile("OPENAI", "Baş mimar • Akıl yürütme", providers["openai"] == true, Cyan, Modifier.weight(1f))
                         ProviderTile("GEMINI", "Analiz • Doğrulama", providers["gemini"] == true, Violet, Modifier.weight(1f))
+                    }
+                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ProviderTile("OPENROUTER", "Ana yürütücü • Ücretsiz rota", providers["openrouter"] == true, Cyan, Modifier.weight(1f))
+                        ProviderTile("KIMI", "Uzun bağlam • Ücretsiz model", providers["kimi"] == true, Violet, Modifier.weight(1f))
+                        ProviderTile("DEEPSEEK", "Kod inceleme • Ücretsiz model", providers["deepseek"] == true, Cyan, Modifier.weight(1f))
                     }
 
                 }

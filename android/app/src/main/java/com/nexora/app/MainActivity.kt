@@ -137,7 +137,9 @@ fun ApexHome() {
                 }
                 activity.runOnUiThread {
                     taskId = id
-                    status = "EMİR GPT'YE İLETİLDİ • OTOMATİK DEVAM BAŞLADI"
+                    chatMessages = chatMessages + ("user" to instruction)
+                    command = ""
+                    status = "APEX ekibi çalışıyor..."
                 }
                 while (true) {
                     Thread.sleep(2500)
@@ -149,6 +151,7 @@ fun ApexHome() {
                         JSONObject(response.body?.string() ?: "{}")
                     }
                     val taskStatus = task.optString("status", "running")
+                    val transcript = task.optString("result", "")
                     val step = task.optInt("step", 0)
                     val message = when (taskStatus) {
                         "completed" -> "GÖREV TAMAMLANDI • ${step} TUR"
@@ -159,7 +162,14 @@ fun ApexHome() {
                         "cancelled" -> "GÖREV İPTAL EDİLDİ"
                         else -> "OPENROUTER DEVAM EDİYOR • ${step}. TUR • GEMINI DENETLİYOR"
                     }
-                    activity.runOnUiThread { status = message }
+                    activity.runOnUiThread {
+                        status = message
+                        if (taskStatus in listOf("completed", "blocked", "failed")) {
+                            val answer = transcript.ifBlank { message }
+                            chatMessages = chatMessages + ("assistant" to answer)
+                            if (voiceEnabled) (activity as? MainActivity)?.speak(answer.takeLast(3500))
+                        }
+                    }
                     if (taskStatus in listOf("completed", "blocked", "failed", "paused", "cancelled")) break
                 }
             } catch (e: Exception) {

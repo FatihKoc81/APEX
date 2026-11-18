@@ -61,7 +61,7 @@ fun ApexHome() {
     var menuExpanded by remember { mutableStateOf(false) }
     var addExpanded by remember { mutableStateOf(false) }
     var attachmentLabel by remember { mutableStateOf("") }
-    var providers by remember { mutableStateOf(mapOf("openai" to false, "gemini" to false)) }
+    var providers by remember { mutableStateOf(mapOf("openrouter" to false, "gemini" to false)) }
     var taskId by remember { mutableStateOf("") }
 
     fun refreshProviders() {
@@ -74,7 +74,7 @@ fun ApexHome() {
                     if (!response.isSuccessful) throw Exception("Sağlayıcı durumu alınamadı: HTTP ${response.code}")
                     JSONArray(response.body?.string() ?: "[]")
                 }
-                val state = mutableMapOf("openai" to false, "gemini" to false)
+                val state = mutableMapOf("openrouter" to false, "gemini" to false)
                 val missing = mutableListOf<String>()
                 for (i in 0 until result.length()) {
                     val item = result.getJSONObject(i)
@@ -82,14 +82,14 @@ fun ApexHome() {
                     val configured = item.optBoolean("configured")
                     if (provider in state.keys) state[provider] = configured
                     if (!configured) {
-                        val expected = if (provider == "openai") "OPENAI_API_KEY" else "GEMINI_API_KEY"
+                        val expected = if (provider == "openrouter") "OPENAI_API_KEY" else "GEMINI_API_KEY"
                         missing.add(expected)
                     }
                 }
                 activity.runOnUiThread {
                     providers = state
-                    status = if (state["openai"] == true && state["gemini"] == true)
-                        "SUNUCU BAĞLI • GPT VE GEMINI HAZIR"
+                    status = if (state["openrouter"] == true && state["gemini"] == true)
+                        "SUNUCU BAĞLI • OPENROUTER VE GEMINI HAZIR"
                     else "SUNUCU BAĞLI • EKSİK: " + missing.joinToString(", ")
                 }
             } catch (e: Exception) {
@@ -135,9 +135,9 @@ fun ApexHome() {
                         "blocked" -> "GÖREV ENGELDE • ${task.optString("error")}"
                         "failed" -> "GÖREV HATASI • ${task.optString("error")}"
                         "paused" -> "GÜVENLİ DURAKLATMA • ${step} TUR KAYDEDİLDİ"
-                        "queued" -> "GPT OTOMATİK DEVAM İÇİN SIRADA • ${step} TUR"
+                        "queued" -> "OPENROUTER OTOMATİK DEVAM İÇİN SIRADA • ${step} TUR"
                         "cancelled" -> "GÖREV İPTAL EDİLDİ"
-                        else -> "GPT DEVAM EDİYOR • ${step}. TUR • GEMINI DENETLİYOR"
+                        else -> "OPENROUTER DEVAM EDİYOR • ${step}. TUR • GEMINI DENETLİYOR"
                     }
                     activity.runOnUiThread { status = message }
                     if (taskStatus in listOf("completed", "blocked", "failed", "paused", "cancelled")) break
@@ -210,7 +210,7 @@ fun ApexHome() {
                 Text("YAPAY ZEKÂ EKİBİ", color = Color.White, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, fontSize = 14.sp)
                 Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ProviderTile("CHATGPT", "Planlama • Koordinasyon", providers["openai"] == true, Cyan, Modifier.weight(1f))
+                        ProviderTile("OPENROUTER", "Planlama • Koordinasyon", providers["openrouter"] == true, Cyan, Modifier.weight(1f))
                         ProviderTile("GEMINI", "Analiz • Doğrulama", providers["gemini"] == true, Violet, Modifier.weight(1f))
                     }
 

@@ -1,7 +1,7 @@
 name: APEX Server TypeScript Check
 on:
   push:
-    branches: [main]
+    branches: [main, apex/free-multi-provider]
     paths:
       - 'server/**'
       - '.github/workflows/server-build.yml'

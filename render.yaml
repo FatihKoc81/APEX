@@ -21,6 +21,12 @@ services:
         value: ""
       - key: OPENROUTER_API_KEY
         sync: false
+      - key: OMNIROUTE_BASE_URL
+        sync: false
+      - key: OMNIROUTE_API_KEY
+        sync: false
+      - key: OMNIROUTE_MODEL
+        value: auto/coding
       - key: OPENROUTER_MODEL
         value: openrouter/free
       - key: GEMINI_API_KEY

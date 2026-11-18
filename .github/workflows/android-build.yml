@@ -1,7 +1,7 @@
 name: APEX Android APK
 on:
   push:
-    branches: [main]
+    branches: [main, apex/free-multi-provider]
     paths:
       - 'android/**'
       - '.github/workflows/android-build.yml'

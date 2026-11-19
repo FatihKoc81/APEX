@@ -69,7 +69,7 @@ export async function askProvider(provider:ProviderName,system:string,prompt:str
  else {
    const config=gatewayConfigs[provider];
    if(!config.baseUrl) throw new Error(`${provider} BASE_URL yapılandırılmamış`);
-   url=`${config.baseUrl.replace(/\\/+$/,"")}/chat/completions`;
+   url=`${config.baseUrl.replace(/\/+$/,"")}/chat/completions`;
    model=config.model;
  }
  const response=await fetch(url,{method:"POST",headers:{authorization:`Bearer ${key}`,"content-type":"application/json"},body:JSON.stringify({model,temperature:0.2,messages:[{role:"system",content:system},{role:"user",content:prompt}]})});

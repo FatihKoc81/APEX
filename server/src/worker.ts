@@ -65,7 +65,42 @@ export async function workerLoop() {
           step++;
           event(task.id,"iteration","running",`GPT'ye devam talimatı gönderiliyor • tur ${step}/${MAX_STEPS}`);
           const prompt=`KULLANICININ DEĞİŞMEZ ANA EMRİ:\n${task.instruction}\n\nÖNCEKİ ÇALIŞMA NOTLARI:\n${cp.notes||"(İlk tur)"}\n\nÖNCEKİ TUR KAYITLARININ SON BÖLÜMÜ:\n${cp.transcript.slice(-6).join("\n\n").slice(-18000)||"(Yok)"}\n\nŞİMDİ DEVAM ET. Önceki cevabınla yetinme. Kalan işi somut biçimde ilerlet, kendi çıktını kontrol et, eksikleri düzelt. Bu otomatik döngüde kullanıcıdan "devam et" bekleme; görev tamamlanmadıysa bir sonraki turda devam edilmek üzere açık ve uygulanabilir not bırak. Yapmadığın dış işlemi yapılmış gibi söyleme. Harici araç/erişim gerektiren işte bunu açıkça belirt.\n\nYanıtının sonunda tam olarak bir durum etiketi ver:\nTASK_STATUS: CONTINUE (iş sürüyorsa)\nTASK_STATUS: COMPLETE (bütün istekler gerçekten bitip kontrol edildiyse)\nTASK_STATUS: BLOCKED (izin/erişim/insan kararı olmadan ilerlenemiyorsa).`;
-          const gptText=await askOpenAIWithTools("Sen ChatGPT rolündeki ana yürütücüsün. Kullanıcı emrini gerçekten yerine getir. GitHub deposunda dosya okuma/yazma ve Actions iş akışı başlatma araçların var. Gerekiyorsa bu araçları çağır; yalnızca plan yazıp durma. Sadece yapılandırılmış APEX deposunda ve izin verilen proje dosyalarında işlem yap. Her değişiklikten sonra sonucu kontrol et. Yapmadığın işlemi yapılmış gibi söyleme.",prompt);
+          // Planner decomposes the immutable user request before execution.
+          const planner=await askProvider("openai",
+            "Sen APEX baş planlama ajanısın. Kullanıcı emrini küçük, bağımlılıkları belli iş paketlerine ayır. Her paket için amaç, gereken uzmanlık, kabul ölçütü ve risk yaz. Gereksiz iş üretme; en fazla 8 paket. Sadece plan döndür.",
+            `ANA EMİR:\n${task.instruction}\n\nÖNCEKİ NOTLAR:\n${cp.notes}\n\nSON TUR KAYITLARI:\n${cp.transcript.slice(-4).join("\\n\\n").slice(-10000)}`);
+          cp.transcript.push(`TUR ${step} • PLANLAMA AJANI\n${planner.text}`);
+          event(task.id,"planning","ok","Baş planlama ajanı işi alt görevlere böldü","openai");
+          // Specialist agents receive the plan concurrently. Their role is advisory;
+          // the main executor remains the only agent with repository write tools.
+          const specialistPool=configured.filter(p=>p!=="openai").slice(0,Number(process.env.MAX_PARALLEL_AGENTS||6));
+          const specialistRoles=[
+            "Yazılım mimarı: teknik tasarım, dosya etkileri ve entegrasyon yaklaşımını incele.",
+            "Araştırma uzmanı: gerekli teknik bilgileri, seçenekleri ve doğrulanması gereken iddiaları çıkar.",
+            "Uygulama uzmanı: planı somut kodlama adımlarına ve bağımlılıklara dönüştür.",
+            "Kalite güvence uzmanı: test senaryoları, hata durumları ve kabul ölçütlerini belirle.",
+            "Güvenlik uzmanı: sırlar, izinler, dış erişim ve kötüye kullanım risklerini değerlendir.",
+            "Performans uzmanı: maliyet, hız, kaynak tüketimi ve ölçeklenebilirliği değerlendir."
+          ];
+          const specialistResults=await Promise.allSettled(specialistPool.map((provider,index)=>
+            askProvider(provider,`Sen APEX uzman ajanısın. Rolün: ${specialistRoles[index % specialistRoles.length]} Ana emrin dışına çıkma; varsayımları belirt; somut öneriler üret.`,
+              `KULLANICI EMRİ:\n${task.instruction}\n\nBAŞ PLAN:\n${planner.text}\n\nÖNCEKİ NOTLAR:\n${cp.notes}\n\nKendi uzmanlık rolün açısından görev paketlerini incele ve uygulanabilir çıktı ver.`)
+          ));
+          const specialistBriefs:string[]=[];
+          specialistResults.forEach((result,index)=>{
+            const provider=specialistPool[index];
+            if(result.status==="fulfilled") {
+              specialistBriefs.push(`[${provider} / ${specialistRoles[index % specialistRoles.length]}]\n${result.value.text}`);
+              cp.transcript.push(`TUR ${step} • UZMAN AJAN ${provider.toUpperCase()}\n${result.value.text}`);
+              event(task.id,"specialist","ok",`${provider} uzman ajanı planını sundu`,provider);
+            } else {
+              const reason=result.reason instanceof Error?result.reason.message:String(result.reason);
+              specialistBriefs.push(`[${provider}] erişilemedi: ${reason}`);
+              event(task.id,"specialist","warning",`${provider} uzman ajanı bu tur çalışamadı: ${reason}`,provider);
+            }
+          });
+          const executionPrompt=`${prompt}\n\nBAŞ PLANLAMA AJANI:\n${planner.text}\n\nUZMAN AJANLARIN İŞ BÖLÜMÜ VE BULGULARI:\n${specialistBriefs.join("\\n\\n")}\n\nPlanı ve uzman bulgularını kullanarak gerçek uygulamayı yap. Sadece rapor yazıp bırakma.`;
+          const gptText=await askOpenAIWithTools("Sen APEX ana yürütücüsüsün. Baş planlama ve uzman ajanların bulgularını koordine et. Kullanıcı emrini gerçekten yerine getir. GitHub deposunda dosya okuma/yazma ve Actions iş akışı başlatma araçların var. Gerekiyorsa bu araçları çağır; yalnızca plan yazıp durma. Sadece yapılandırılmış APEX deposunda ve izin verilen proje dosyalarında işlem yap. Her değişiklikten sonra sonucu kontrol et. Yapmadığın işlemi yapılmış gibi söyleme.",executionPrompt);
           const gpt={provider:"openai" as const,text:gptText};
           cp.transcript.push(`TUR ${step} • GPT\n${gpt.text}`);
           event(task.id,"gpt","ok",`GPT tur ${step} yanıtını verdi`,"openai");

@@ -3,7 +3,7 @@ import { db } from "./db.js";
 
 export type StudioMode = "hourly" | "custom";
 export function studioConfig() {
-  const checks = [
+  const checks: Array<[string, boolean]> = [
     ["OpenAI", Boolean(process.env.OPENAI_API_KEY)],
     ["Gemini", Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)],
     ["Pexels", Boolean(process.env.PEXELS_API_KEY)],

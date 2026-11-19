@@ -6,7 +6,7 @@ export function studioConfig() {
   const checks: Array<[string, boolean]> = [
     ["OpenAI", Boolean(process.env.OPENAI_API_KEY)],
     ["Gemini", Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)],
-    ["Pexels", Boolean(process.env.PEXELS_API_KEY)],
+    ["Pixabay", Boolean(process.env.PIXABAY_API_KEY)],
     ["Creatomate", Boolean(process.env.CREATOMATE_API_KEY && process.env.CREATOMATE_TEMPLATE_ID)],
     ["ElevenLabs", Boolean(process.env.ELEVENLABS_API_KEY)],
     ["TikTok OAuth", Boolean(process.env.TIKTOK_CLIENT_KEY && process.env.TIKTOK_CLIENT_SECRET && process.env.TIKTOK_ACCESS_TOKEN)],

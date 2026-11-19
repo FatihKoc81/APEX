@@ -68,6 +68,7 @@ fun ApexHome() {
     var attachmentLabel by remember { mutableStateOf("") }
     var providers by remember { mutableStateOf(mapOf("openai" to false, "gemini" to false)) }
     var taskId by remember { mutableStateOf("") }
+    var taskEvents by remember { mutableStateOf(listOf<String>()) }
     val prefs = remember { activity.getSharedPreferences("apex_device_auth", android.content.Context.MODE_PRIVATE) }
     var deviceToken by remember { mutableStateOf(prefs.getString("device_token", "") ?: "") }
     var inviteCode by remember { mutableStateOf("") }
@@ -135,9 +136,12 @@ fun ApexHome() {
         }.start()
     }
 
-    fun startTask() {
-        if (command.isBlank()) { status = "ÖNCE BİR TALİMAT YAZIN"; return }
-        val instruction = command.trim()
+    fun startTask(voiceInstruction: String? = null) {
+        val instruction = (voiceInstruction ?: command).trim()
+        if (instruction.isBlank()) { status = "ÖNCE BİR TALİMAT YAZIN"; return }
+        if (deviceToken.isBlank()) { status = "ÖNCE BU CİHAZI YETKİLENDİRİN"; enrollmentOpen = true; return }
+        taskEvents = listOf("Emir alındı • sunucuya gönderiliyor")
+        status = "EMİR SUNUCUYA GÖNDERİLİYOR..."
         Thread {
             try {
                 val json = JSONObject().put("instruction", instruction).toString()
@@ -165,6 +169,15 @@ fun ApexHome() {
                     }
                     val taskStatus = task.optString("status", "running")
                     val step = task.optInt("step", 0)
+                    val eventsJson = task.optJSONArray("events") ?: JSONArray()
+                    val visibleEvents = mutableListOf<String>()
+                    for (eventIndex in 0 until eventsJson.length()) {
+                        val ev = eventsJson.optJSONObject(eventIndex) ?: continue
+                        val stage = ev.optString("stage", "agent").uppercase()
+                        val provider = ev.optString("provider", "")
+                        val detail = ev.optString("detail", "")
+                        visibleEvents.add(listOf(stage, provider, detail).filter { it.isNotBlank() }.joinToString(" • "))
+                    }
                     val message = when (taskStatus) {
                         "completed" -> "GÖREV TAMAMLANDI • ${step} TUR"
                         "blocked" -> "GÖREV ENGELDE • ${task.optString("error")}"
@@ -174,7 +187,10 @@ fun ApexHome() {
                         "cancelled" -> "GÖREV İPTAL EDİLDİ"
                         else -> "GPT DEVAM EDİYOR • ${step}. TUR • GEMINI DENETLİYOR"
                     }
-                    activity.runOnUiThread { status = message }
+                    activity.runOnUiThread {
+                        status = message
+                        taskEvents = visibleEvents.takeLast(12).ifEmpty { listOf("Görev sırada • ilk ajan yanıtı bekleniyor") }
+                    }
                     if (taskStatus in listOf("completed", "blocked", "failed", "paused", "cancelled")) break
                 }
             } catch (e: Exception) {
@@ -200,7 +216,8 @@ fun ApexHome() {
         val spoken = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
         if (!spoken.isNullOrBlank()) {
             command = listOf(command, spoken).filter { it.isNotBlank() }.joinToString(" ")
-            status = "SESLİ TALİMAT METNE DÖNÜŞTÜRÜLDÜ"
+            status = "SESLİ EMİR ALGILANDI • GÖNDERİLİYOR"
+            startTask(spoken)
         }
     }
 
@@ -284,6 +301,15 @@ fun ApexHome() {
                             Box(Modifier.size(7.dp).background(if (providers["gemini"] == true) Color(0xFF43D6A0) else Color.Gray, RoundedCornerShape(50)))
                             Spacer(Modifier.width(6.dp))
                             Text("Gemini", color = Color(0xFFBFC5D1), fontSize = 11.sp)
+                        }
+                    }
+                    if (taskEvents.isNotEmpty()) {
+                        Text("CANLI AJAN AKIŞI", color = Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        taskEvents.takeLast(10).forEachIndexed { index, line ->
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                                Box(Modifier.padding(top = 4.dp).size(7.dp).background(if (index == taskEvents.lastIndex) Cyan else Color(0xFF536078), RoundedCornerShape(50)))
+                                Text(line, color = if (index == taskEvents.lastIndex) Color.White else Color(0xFF9EA9BC), fontSize = 11.sp, lineHeight = 16.sp)
+                            }
                         }
                     }
                 }

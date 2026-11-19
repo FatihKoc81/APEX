@@ -35,7 +35,7 @@ services:
       - key: FREELLMAPI_API_KEY
         sync: false
       - key: NINEROUTER_BASE_URL
-        value: https://9router.com/v1
+        sync: false
       - key: NINEROUTER_API_KEY
         sync: false
       - key: ELEVENLABS_API_KEY

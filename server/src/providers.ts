@@ -36,6 +36,47 @@ export function providerStatus() {
     model: provider in gatewayConfigs ? gatewayConfigs[provider as keyof typeof gatewayConfigs].model : null
   }));
 }
+
+export async function providerHealth() {
+  const gateways: Array<"omniroute" | "freellmapi" | "9router"> = ["omniroute", "freellmapi", "9router"];
+  return Promise.all(gateways.map(async provider => {
+    const config = gatewayConfigs[provider];
+    const configured = Boolean(config.baseUrl && config.key);
+    if (!configured) {
+      return { provider, configured: false, reachable: false, status: "missing_configuration", latencyMs: null, modelCount: null };
+    }
+    const started = Date.now();
+    try {
+      const base = config.baseUrl!.replace(/\/+$/, "");
+      const response = await fetch(`${base}/models`, {
+        method: "GET",
+        headers: { authorization: `Bearer ${config.key}`, accept: "application/json" },
+        signal: AbortSignal.timeout(10000)
+      });
+      const data: any = await response.json().catch(() => null);
+      return {
+        provider,
+        configured: true,
+        reachable: response.ok,
+        status: response.ok ? "online" : `http_${response.status}`,
+        statusCode: response.status,
+        latencyMs: Date.now() - started,
+        modelCount: Array.isArray(data?.data) ? data.data.length : null
+      };
+    } catch (error: any) {
+      return {
+        provider,
+        configured: true,
+        reachable: false,
+        status: "connection_error",
+        latencyMs: Date.now() - started,
+        modelCount: null,
+        error: String(error?.message || "Connection failed").slice(0, 180)
+      };
+    }
+  }));
+}
+
 const githubTools = [
  {type:"function",function:{name:"read_file",description:"Read a text file from the configured GitHub repository. Only approved project paths are allowed.",parameters:{type:"object",properties:{path:{type:"string"}},required:["path"],additionalProperties:false}}},
  {type:"function",function:{name:"write_file",description:"Create or update a text file in the configured GitHub repository. Provide the complete new file content. Changes are committed to the configured branch.",parameters:{type:"object",properties:{path:{type:"string"},content:{type:"string"},message:{type:"string"}},required:["path","content","message"],additionalProperties:false}}},

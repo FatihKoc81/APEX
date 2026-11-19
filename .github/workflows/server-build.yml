@@ -1,7 +1,11 @@
 name: APEX Server TypeScript Check
 on:
   push:
-    branches: [main]
+    branches: [main, full-full-stage]
+    paths:
+      - 'server/**'
+      - '.github/workflows/server-build.yml'
+  pull_request:
     paths:
       - 'server/**'
       - '.github/workflows/server-build.yml'

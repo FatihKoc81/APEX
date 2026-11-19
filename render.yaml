@@ -15,10 +15,22 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_REPOSITORY
+        value: FatihKoc81/APEX
+      - key: GITHUB_BRANCH
+        value: main
+      - key: APEX_ENROLLMENT_CODE
+        sync: false
+      - key: APEX_ADMIN_TOKEN
+        sync: false
       - key: MAX_STEPS_PER_TASK
-        value: 300
+        value: 50
       - key: MAX_TASK_MINUTES
-        value: 1080
+        value: 180
+      - key: MAX_PARALLEL_AGENTS
+        value: 6
 
       - key: STUDIO_TIMEZONE
         value: Europe/Istanbul
@@ -34,10 +46,14 @@ services:
         sync: false
       - key: FREELLMAPI_API_KEY
         sync: false
+      - key: FREELLMAPI_MODEL
+        value: auto
       - key: NINEROUTER_BASE_URL
         sync: false
       - key: NINEROUTER_API_KEY
         sync: false
+      - key: NINEROUTER_MODEL
+        value: auto
       - key: ELEVENLABS_API_KEY
         sync: false
       - key: STUDIO_WEBHOOK_SECRET

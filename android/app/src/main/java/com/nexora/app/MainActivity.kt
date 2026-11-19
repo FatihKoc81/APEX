@@ -349,6 +349,8 @@ fun ApexHome() {
         }
 }
 
+}
+
 @Composable
 private fun ProviderTile(name: String, role: String, configured: Boolean, accent: Color, modifier: Modifier = Modifier) {
     Surface(modifier = modifier.fillMaxHeight(), color = Panel, shape = RoundedCornerShape(16.dp)) {

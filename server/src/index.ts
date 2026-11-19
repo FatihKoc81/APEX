@@ -28,6 +28,6 @@ app.post("/tasks/:id/:action",(req,res)=>{
  return setTaskControl(req.params.id,action as any)?res.json({ok:true}):res.status(404).json({error:"not found"});
 });
 app.get("/admin/devices",requireAdmin,(_req,res)=>res.json(listDevices()));
-app.post("/admin/devices/:id/revoke",requireAdmin,(req,res)=>revokeDevice(req.params.id)?res.json({ok:true}):res.status(404).json({error:"device not found or already revoked"}));
+app.post("/admin/devices/:id/revoke",requireAdmin,(req,res)=>revokeDevice(String(req.params.id))?res.json({ok:true}):res.status(404).json({error:"device not found or already revoked"}));
 const port=Number(process.env.PORT||8787); app.listen(port,()=>console.log(`APEX API listening on ${port}`));
 workerLoop().catch(e=>console.error("worker stopped",e));

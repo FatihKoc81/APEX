@@ -9,6 +9,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -226,7 +228,7 @@ fun ApexHome() {
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
                         Text("APEX", fontSize = if (compact) 27.sp else 32.sp, fontWeight = FontWeight.Black, color = Color.White, letterSpacing = 3.sp)
-                        Text("MULTI-INTELLIGENCE COMMAND", fontSize = 9.sp, color = Cyan, letterSpacing = 1.5.sp)
+                        Text("MULTI-AGENT WORKSPACE", fontSize = 9.sp, color = Cyan, letterSpacing = 1.5.sp)
                     }
                     Surface(color = Color(0x332DE5FF), shape = RoundedCornerShape(50)) {
                         Text("● ONLINE", Modifier.padding(horizontal = 10.dp, vertical = 7.dp), color = Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
@@ -244,24 +246,48 @@ fun ApexHome() {
                     }
                 }
 
-                Surface(Modifier.weight(0.72f).fillMaxWidth(), color = Panel.copy(alpha = .97f), shape = RoundedCornerShape(22.dp)) {
-                    Column(Modifier.fillMaxSize().padding(if (compact) 14.dp else 18.dp), verticalArrangement = Arrangement.SpaceEvenly) {
-                        Text("KOMUTA MERKEZİ", color = Cyan, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
-                        Text("İki zihin. Tek hedef.", color = Color.White, fontSize = if (compact) 20.sp else 23.sp, fontWeight = FontWeight.Bold)
-                        Text("Görevlerini GPT ve Gemini birlikte ele alır.", color = Color.LightGray, fontSize = 13.sp)
-                        Text(status, color = Cyan, fontSize = 9.sp, maxLines = 2)
+                Column(
+                    modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color(0xFF151C2D),
+                        shape = RoundedCornerShape(28.dp)
+                    ) {
+                        Column(Modifier.fillMaxWidth().padding(if (compact) 18.dp else 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Surface(color = Color(0x222EDDF5), shape = RoundedCornerShape(50)) {
+                                Text("  APEX • AKILLI KOMUTA MERKEZİ  ", modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp), color = Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            }
+                            Text("Birlikte düşünür.\nSonuca kadar çalışır.", color = Color.White, fontSize = if (compact) 25.sp else 30.sp, lineHeight = if (compact) 31.sp else 37.sp, fontWeight = FontWeight.Bold)
+                            Text("Emrini ver. GPT planlasın, uzman ajanlar katkı sunsun, Gemini denetlesin.", color = Color(0xFFB8C1D4), fontSize = 14.sp, lineHeight = 21.sp)
+                            Surface(color = Color(0xFF0D2630), shape = RoundedCornerShape(14.dp)) {
+                                Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Box(Modifier.size(8.dp).background(if (deviceToken.isNotBlank()) Color(0xFF43D6A0) else Color(0xFFFFB454), RoundedCornerShape(50)))
+                                    Spacer(Modifier.width(9.dp))
+                                    Text(status, color = Color(0xFFBDEFFA), fontSize = 10.sp, maxLines = 3)
+                                }
+                            }
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("AJAN EKİBİN", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Spacer(Modifier.weight(1f))
+                        Text("CANLI DURUM", color = Color.Gray, fontSize = 9.sp, letterSpacing = 1.sp)
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ProviderTile("CHATGPT", "Planlama ve yürütme", providers["openai"] == true, Cyan, Modifier.weight(1f).height(116.dp))
+                        ProviderTile("GEMINI", "Bağımsız denetim", providers["gemini"] == true, Violet, Modifier.weight(1f).height(116.dp))
+                    }
+                    Surface(Modifier.fillMaxWidth(), color = Color(0xFF111827), shape = RoundedCornerShape(20.dp)) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(if (taskId.isBlank()) "YENİ GÖREVİNİ BEKLİYORUM" else "AKTİF GÖREV", color = Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            Text(if (taskId.isBlank()) "Ne üzerinde çalışalım?" else "Görev kimliği: $taskId", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Görevler sunucuda kaydedilir; geçici kesintilerde devam bilgisi korunur.", color = Color(0xFF9EA9BC), fontSize = 11.sp, lineHeight = 16.sp)
+                        }
                     }
                 }
-
-                Text("YAPAY ZEKÂ EKİBİ", color = Color.White, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, fontSize = 14.sp)
-                Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ProviderTile("CHATGPT", "Planlama • Koordinasyon", providers["openai"] == true, Cyan, Modifier.weight(1f))
-                        ProviderTile("GEMINI", "Analiz • Doğrulama", providers["gemini"] == true, Violet, Modifier.weight(1f))
-                    }
-
-                }
-                Text(if (taskId.isBlank()) "GÖREV MOTORU • SUNUCU KUYRUĞU" else "AKTİF GÖREV • $taskId", color = Color.Gray, fontSize = 8.sp, maxLines = 1)
+                Text(if (taskId.isBlank()) "APEX HAZIR" else "GÖREV • ${taskId.take(8)}", color = Color.Gray, fontSize = 8.sp, maxLines = 1)
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = Panel.copy(alpha = .99f),

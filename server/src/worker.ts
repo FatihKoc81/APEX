@@ -92,7 +92,7 @@ export async function workerLoop() {
               event(task.id,"agent_review","warning",`${provider} erişilemedi; ana görev devam ediyor: ${reason}`,provider);
             }
           });
-          const gatewayAuditText=gatewayAudits.join("\\n\\n") || "(Ek ağ geçidi yapılandırılmadı)";
+          const gatewayAuditText=gatewayAudits.join("\n\n") || "(Ek ağ geçidi yapılandırılmadı)";
           const review=await askProvider("openai","Sen son karar veren görev yöneticisisin. Gemini denetimini dikkate al. Erken tamamlandı deme. Görev tamamlanmadıysa CONTINUE seç.",`KULLANICI EMRİ:\n${task.instruction}\n\nGPT ÇIKTISI:\n${gpt.text}\n\nGEMINI DENETİMİ:\n${gem.text}\n\nEK BAĞIMSIZ AJAN DENETİMLERİ:\n${gatewayAuditText}\n\nÖnceki çalışma notları:\n${cp.notes}\n\nBir sonraki tur için kısa çalışma notlarını güncelle. Tüm isteklerin gerçekten tamamlanıp kontrol edildiğine dair kanıt yoksa TASK_STATUS: CONTINUE yaz. Dış erişim/izin olmadan ilerlemek mümkün değilse TASK_STATUS: BLOCKED yaz. Yalnızca tüm iş tamam ve doğrulanmışsa TASK_STATUS: COMPLETE yaz. Son satırda durum etiketini yaz.`);
           cp.notes=review.text;
           cp.transcript.push(`TUR ${step} • GPT DEVAM KARARI\n${review.text}`);

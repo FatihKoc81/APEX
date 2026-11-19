@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -262,52 +263,68 @@ fun ApexHome() {
                 }
                 Text(if (taskId.isBlank()) "GÖREV MOTORU • SUNUCU KUYRUĞU" else "AKTİF GÖREV • $taskId", color = Color.Gray, fontSize = 8.sp, maxLines = 1)
                 Surface(
-                    Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     color = Panel.copy(alpha = .99f),
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
+                    shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
                 ) {
-                    Column(Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        if (attachmentLabel.isNotBlank()) Text(attachmentLabel, color = Cyan, fontSize = 9.sp, maxLines = 1)
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Box {
-                                FilledTonalIconButton(onClick = { addExpanded = true }, modifier = Modifier.size(42.dp)) { Icon(Icons.Default.Add, "Ek ekle") }
-                                DropdownMenu(expanded = addExpanded, onDismissRequest = { addExpanded = false }) {
-                                    DropdownMenuItem(text = { Text("Kamera") }, onClick = { addExpanded = false; cameraCapture.launch(null) })
-                                    DropdownMenuItem(text = { Text("Fotoğraflar") }, onClick = { addExpanded = false; photoPicker.launch("image/*") })
-                                    DropdownMenuItem(text = { Text("Dosyalar") }, onClick = { addExpanded = false; filePicker.launch(arrayOf("*/*")) })
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilledIconButton(
+                            onClick = { addExpanded = true },
+                            modifier = Modifier.size(42.dp),
+                            shape = RoundedCornerShape(50)
+                        ) { Icon(Icons.Default.Add, contentDescription = "Ek ekle") }
+                        DropdownMenu(expanded = addExpanded, onDismissRequest = { addExpanded = false }) {
+                            DropdownMenuItem(text = { Text("Kamera") }, onClick = { addExpanded = false; cameraCapture.launch(null) })
+                            DropdownMenuItem(text = { Text("Fotoğraflar") }, onClick = { addExpanded = false; photoPicker.launch("image/*") })
+                            DropdownMenuItem(text = { Text("Dosyalar") }, onClick = { addExpanded = false; filePicker.launch(arrayOf("*/*")) })
+                        }
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            color = Color.Transparent,
+                            shape = RoundedCornerShape(28.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF777487))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(start = 16.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                                    if (command.isEmpty()) Text("Mesajınızı yazın...", color = Color(0xFFB9B6C5), fontSize = 16.sp)
+                                    BasicTextField(
+                                        value = command,
+                                        onValueChange = { command = it },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp),
+                                        maxLines = 5
+                                    )
+                                }
+                                if (command.isBlank()) {
+                                    IconButton(
+                                        onClick = {
+                                            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR")
+                                                putExtra(RecognizerIntent.EXTRA_PROMPT, "APEX için talimatınızı söyleyin")
+                                            }
+                                            try { speechInput.launch(intent) } catch (_: Exception) { status = "SES TANIMA HİZMETİ BULUNAMADI" }
+                                        },
+                                        modifier = Modifier.size(38.dp)
+                                    ) { Icon(Icons.Default.Mic, "Sesli talimat", tint = Cyan) }
+                                } else {
+                                    FilledIconButton(
+                                        onClick = { startTask() },
+                                        modifier = Modifier.size(38.dp),
+                                        shape = RoundedCornerShape(50)
+                                    ) { Icon(Icons.Default.Send, contentDescription = "Gönder") }
                                 }
                             }
-                            OutlinedTextField(
-                                value = command,
-                                onValueChange = { command = it },
-                                modifier = Modifier.weight(1f),
-                                minLines = 1,
-                                maxLines = 4,
-                                placeholder = { Text("Mesajınızı yazın...") },
-                                shape = RoundedCornerShape(24.dp)
-                            )
-                            FilledIconButton(
-                                onClick = { startTask() },
-                                enabled = command.isNotBlank(),
-                                modifier = Modifier.size(46.dp),
-                                shape = RoundedCornerShape(50)
-                            ) { Icon(Icons.Default.Send, contentDescription = "Gönder") }
-                        }
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text("APEX", color = Color.Gray, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                            Spacer(Modifier.weight(1f))
-                            IconButton(onClick = {
-                                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR")
-                                    putExtra(RecognizerIntent.EXTRA_PROMPT, "APEX için talimatınızı söyleyin")
-                                }
-                                try { speechInput.launch(intent) } catch (_: Exception) { status = "SES TANIMA HİZMETİ BULUNAMADI" }
-                            }, modifier = Modifier.size(34.dp)) { Icon(Icons.Default.Mic, "Sesli talimat", tint = Cyan) }
                         }
                     }
-                }
-            }
+                }            }
         }
     }
 }

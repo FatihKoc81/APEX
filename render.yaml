@@ -16,6 +16,33 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: MAX_STEPS_PER_TASK
-        value: 100
+        value: 300
       - key: MAX_TASK_MINUTES
         value: 1080
+
+      - key: STUDIO_TIMEZONE
+        value: Europe/Istanbul
+      - key: STUDIO_TOPICS
+        value: Tarih, teknoloji, genel kültür, otomobil, ilginç bilgiler
+      - key: PEXELS_API_KEY
+        sync: false
+      - key: CREATOMATE_API_KEY
+        sync: false
+      - key: CREATOMATE_TEMPLATE_ID
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: STUDIO_WEBHOOK_SECRET
+        sync: false
+      - key: TIKTOK_CLIENT_KEY
+        sync: false
+      - key: TIKTOK_CLIENT_SECRET
+        sync: false
+      - key: TIKTOK_ACCESS_TOKEN
+        sync: false
+      - key: YOUTUBE_CLIENT_ID
+        sync: false
+      - key: YOUTUBE_CLIENT_SECRET
+        sync: false
+      - key: YOUTUBE_REFRESH_TOKEN
+        sync: false

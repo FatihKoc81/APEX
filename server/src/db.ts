@@ -14,6 +14,15 @@ CREATE TABLE IF NOT EXISTS devices (
  id TEXT PRIMARY KEY, name TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE,
  created_at TEXT NOT NULL, revoked_at TEXT
 );
+CREATE TABLE IF NOT EXISTS studio_jobs (
+ id TEXT PRIMARY KEY, mode TEXT NOT NULL, topic TEXT NOT NULL, duration_seconds INTEGER NOT NULL DEFAULT 60,
+ status TEXT NOT NULL, title TEXT, script TEXT, render_id TEXT, video_url TEXT, publish_status TEXT NOT NULL DEFAULT 'pending',
+ error TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS studio_events (
+ id INTEGER PRIMARY KEY AUTOINCREMENT, job_id TEXT NOT NULL, at TEXT NOT NULL,
+ stage TEXT NOT NULL, status TEXT NOT NULL, detail TEXT
+);
 CREATE TABLE IF NOT EXISTS events (
  id INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT NOT NULL, at TEXT NOT NULL,
  stage TEXT NOT NULL, provider TEXT, status TEXT NOT NULL, detail TEXT

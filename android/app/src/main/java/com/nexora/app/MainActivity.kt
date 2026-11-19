@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.*
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,13 +64,43 @@ fun ApexHome() {
     var attachmentLabel by remember { mutableStateOf("") }
     var providers by remember { mutableStateOf(mapOf("openai" to false, "gemini" to false)) }
     var taskId by remember { mutableStateOf("") }
+    val prefs = remember { activity.getSharedPreferences("apex_device_auth", android.content.Context.MODE_PRIVATE) }
+    var deviceToken by remember { mutableStateOf(prefs.getString("device_token", "") ?: "") }
+    var inviteCode by remember { mutableStateOf("") }
+    var enrollmentOpen by remember { mutableStateOf(false) }
+    var enrollmentBusy by remember { mutableStateOf(false) }
+
+    fun enrollThisDevice() {
+        if (inviteCode.isBlank()) { status = "DAVET KODU GEREKLİ"; return }
+        enrollmentBusy = true
+        Thread {
+            try {
+                val payload = JSONObject().put("inviteCode", inviteCode.trim()).put("deviceName", android.os.Build.MODEL ?: "Android cihaz").toString()
+                val body = payload.toRequestBody("application/json; charset=utf-8".toMediaType())
+                val req = Request.Builder().url(BuildConfig.API_BASE_URL.trimEnd('/') + "/auth/enroll").post(body).build()
+                val result = http.newCall(req).execute().use { response ->
+                    val raw = response.body?.string() ?: "{}"
+                    if (!response.isSuccessful) throw Exception(JSONObject(raw).optString("error", "HTTP ${response.code}"))
+                    JSONObject(raw)
+                }
+                val token = result.getString("token")
+                prefs.edit().putString("device_token", token).putString("device_id", result.optString("id")).apply()
+                activity.runOnUiThread {
+                    deviceToken = token; inviteCode = ""; enrollmentOpen = false; enrollmentBusy = false
+                    status = "BU CİHAZ APEX'E YETKİLENDİRİLDİ"; refreshProviders()
+                }
+            } catch (e: Exception) {
+                activity.runOnUiThread { enrollmentBusy = false; status = "YETKİLENDİRME BAŞARISIZ • ${e.message}" }
+            }
+        }.start()
+    }
 
     fun refreshProviders() {
         Thread {
             try {
                 val req = Request.Builder()
                     .url(BuildConfig.API_BASE_URL.trimEnd('/') + "/providers")
-                    .get().build()
+                    .header("Authorization", "Bearer " + deviceToken).get().build()
                 val result = http.newCall(req).execute().use { response ->
                     if (!response.isSuccessful) throw Exception("Sağlayıcı durumu alınamadı: HTTP ${response.code}")
                     JSONArray(response.body?.string() ?: "[]")
@@ -109,7 +140,7 @@ fun ApexHome() {
                 val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
                 val req = Request.Builder()
                     .url(BuildConfig.API_BASE_URL.trimEnd('/') + "/tasks")
-                    .post(body).build()
+                    .header("Authorization", "Bearer " + deviceToken).post(body).build()
                 val id = http.newCall(req).execute().use { response ->
                     val result = JSONObject(response.body?.string() ?: "{}")
                     if (!response.isSuccessful) throw Exception(result.optString("error", "HTTP ${response.code}"))
@@ -123,7 +154,7 @@ fun ApexHome() {
                     Thread.sleep(2500)
                     val poll = Request.Builder()
                         .url(BuildConfig.API_BASE_URL.trimEnd('/') + "/tasks/" + id)
-                        .get().build()
+                        .header("Authorization", "Bearer " + deviceToken).get().build()
                     val task = http.newCall(poll).execute().use { response ->
                         if (!response.isSuccessful) throw Exception("Görev durumu alınamadı: HTTP ${response.code}")
                         JSONObject(response.body?.string() ?: "{}")
@@ -150,7 +181,7 @@ fun ApexHome() {
         }.start()
     }
 
-    LaunchedEffect(Unit) { refreshProviders() }
+    LaunchedEffect(Unit) { if (deviceToken.isNotBlank()) refreshProviders() else status = "BU CİHAZ HENÜZ YETKİLENDİRİLMEDİ" }
 
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) attachmentLabel = "Fotoğraf seçildi (henüz sunucuya aktarılmıyor)"
@@ -170,6 +201,18 @@ fun ApexHome() {
     }
 
     MaterialTheme(colorScheme = darkColorScheme(background = Night, surface = Panel, primary = Cyan, secondary = Violet)) {
+        if (enrollmentOpen) {
+            AlertDialog(
+                onDismissRequest = { if (!enrollmentBusy) enrollmentOpen = false },
+                title = { Text("Cihaz yetkilendirme") },
+                text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Yönetici tarafından verilen davet kodunu girin. Kod yalnızca bu cihazı kaydetmek için kullanılır.")
+                    OutlinedTextField(value = inviteCode, onValueChange = { inviteCode = it }, label = { Text("Davet kodu") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
+                } },
+                confirmButton = { TextButton(onClick = { enrollThisDevice() }, enabled = !enrollmentBusy) { Text(if (enrollmentBusy) "BAĞLANIYOR..." else "YETKİLENDİR") } },
+                dismissButton = { TextButton(onClick = { enrollmentOpen = false }, enabled = !enrollmentBusy) { Text("İPTAL") } }
+            )
+        }
         BoxWithConstraints(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF101A31), Night)))) {
             val compact = maxHeight < 700.dp
             Column(
@@ -193,7 +236,8 @@ fun ApexHome() {
                                 menuExpanded = false
                                 status = "GÜNCELLEME SERVİSİ HENÜZ ETKİN DEĞİL"
                             })
-                            DropdownMenuItem(text = { Text("Bağlantıları yenile") }, onClick = { menuExpanded = false; refreshProviders() })
+                            DropdownMenuItem(text = { Text("Bu cihazı yetkilendir") }, onClick = { menuExpanded = false; enrollmentOpen = true })
+                            DropdownMenuItem(text = { Text("Bağlantıları yenile") }, onClick = { menuExpanded = false; if (deviceToken.isBlank()) enrollmentOpen = true else refreshProviders() })
                         }
                     }
                 }

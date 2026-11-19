@@ -30,6 +30,14 @@ services:
         sync: false
       - key: CREATOMATE_TEMPLATE_ID
         sync: false
+      - key: FREELLMAPI_BASE_URL
+        sync: false
+      - key: FREELLMAPI_API_KEY
+        sync: false
+      - key: NINEROUTER_BASE_URL
+        value: https://9router.com/v1
+      - key: NINEROUTER_API_KEY
+        sync: false
       - key: ELEVENLABS_API_KEY
         sync: false
       - key: STUDIO_WEBHOOK_SECRET

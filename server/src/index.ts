@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { createTask,getTask,setTaskControl,workerLoop } from "./worker.js";
-import { providerStatus } from "./providers.js";
+import { providerStatus, providerHealth } from "./providers.js";
 import { enrollDevice,listDevices,requireAdmin,requireDevice,revokeDevice } from "./auth.js";
 import { createStudioJob,getStudioJob,listStudioJobs,recordStudioRenderWebhook,studioConfig,studioWebhookAuthorized } from "./studio.js";
 dotenv.config();
@@ -28,6 +28,7 @@ app.post("/auth/enroll",(req,res)=>{
 });
 app.use(requireDevice);
 app.get("/providers",(_req,res)=>res.json(providerStatus()));
+app.get("/providers/health",async (_req,res)=>res.json(await providerHealth()));
 app.get("/studio/config",(_req,res)=>res.json(studioConfig()));
 app.get("/studio/jobs",(req,res)=>res.json(listStudioJobs(Number(req.query.limit)||30)));
 app.post("/studio/jobs",(req,res)=>{

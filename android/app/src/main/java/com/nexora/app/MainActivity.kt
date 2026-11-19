@@ -217,21 +217,24 @@ fun ApexHome() {
                 dismissButton = { TextButton(onClick = { enrollmentOpen = false }, enabled = !enrollmentBusy) { Text("İPTAL") } }
             )
         }
-        BoxWithConstraints(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF101A31), Night)))) {
+        BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
             val compact = maxHeight < 700.dp
             Column(
-                modifier = Modifier.fillMaxSize().padding(start = if (compact) 14.dp else 20.dp, end = if (compact) 14.dp else 20.dp, top = if (compact) 8.dp else 12.dp),
-                verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp)
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
-                Row(Modifier.fillMaxWidth().height(if (compact) 54.dp else 64.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Image(painter = painterResource(R.drawable.apex_logo), contentDescription = "APEX", modifier = Modifier.size(if (compact) 48.dp else 58.dp))
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).height(54.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Image(painter = painterResource(R.drawable.apex_logo), contentDescription = "APEX", modifier = Modifier.size(40.dp))
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("APEX", fontSize = if (compact) 27.sp else 32.sp, fontWeight = FontWeight.Black, color = Color.White, letterSpacing = 3.sp)
-                        Text("MULTI-AGENT WORKSPACE", fontSize = 9.sp, color = Cyan, letterSpacing = 1.5.sp)
+                        Text("APEX", fontSize = 23.sp, fontWeight = FontWeight.Bold, color = Color.White, letterSpacing = 2.sp)
+                        Text("MULTI-AGENT", fontSize = 8.sp, color = Cyan, letterSpacing = 1.8.sp)
                     }
-                    Surface(color = Color(0x332DE5FF), shape = RoundedCornerShape(50)) {
-                        Text("● ONLINE", Modifier.padding(horizontal = 10.dp, vertical = 7.dp), color = Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Surface(color = Color(0xFF102B35), shape = RoundedCornerShape(50)) {
+                        Text("● ONLINE", Modifier.padding(horizontal = 10.dp, vertical = 7.dp), color = Cyan, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                     }
                     Box {
                         IconButton(onClick = { menuExpanded = true }) { Icon(Icons.Default.Menu, "Menü", tint = Color.White) }
@@ -245,114 +248,105 @@ fun ApexHome() {
                         }
                     }
                 }
-
-                Column(
-                    modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+                    color = Color(0xFF151923),
+                    shape = RoundedCornerShape(18.dp)
                 ) {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = Color(0xFF151C2D),
-                        shape = RoundedCornerShape(28.dp)
-                    ) {
-                        Column(Modifier.fillMaxWidth().padding(if (compact) 18.dp else 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Surface(color = Color(0x222EDDF5), shape = RoundedCornerShape(50)) {
-                                Text("  APEX • AKILLI KOMUTA MERKEZİ  ", modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp), color = Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                            }
-                            Text("Birlikte düşünür.\nSonuca kadar çalışır.", color = Color.White, fontSize = if (compact) 25.sp else 30.sp, lineHeight = if (compact) 31.sp else 37.sp, fontWeight = FontWeight.Bold)
-                            Text("Emrini ver. GPT planlasın, uzman ajanlar katkı sunsun, Gemini denetlesin.", color = Color(0xFFB8C1D4), fontSize = 14.sp, lineHeight = 21.sp)
-                            Surface(color = Color(0xFF0D2630), shape = RoundedCornerShape(14.dp)) {
-                                Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Box(Modifier.size(8.dp).background(if (deviceToken.isNotBlank()) Color(0xFF43D6A0) else Color(0xFFFFB454), RoundedCornerShape(50)))
-                                    Spacer(Modifier.width(9.dp))
-                                    Text(status, color = Color(0xFFBDEFFA), fontSize = 10.sp, maxLines = 3)
-                                }
-                            }
-                        }
-                    }
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("AJAN EKİBİN", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Spacer(Modifier.weight(1f))
-                        Text("CANLI DURUM", color = Color.Gray, fontSize = 9.sp, letterSpacing = 1.sp)
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        ProviderTile("CHATGPT", "Planlama ve yürütme", providers["openai"] == true, Cyan, Modifier.weight(1f).height(116.dp))
-                        ProviderTile("GEMINI", "Bağımsız denetim", providers["gemini"] == true, Violet, Modifier.weight(1f).height(116.dp))
-                    }
-                    Surface(Modifier.fillMaxWidth(), color = Color(0xFF111827), shape = RoundedCornerShape(20.dp)) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(if (taskId.isBlank()) "YENİ GÖREVİNİ BEKLİYORUM" else "AKTİF GÖREV", color = Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                            Text(if (taskId.isBlank()) "Ne üzerinde çalışalım?" else "Görev kimliği: $taskId", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                            Text("Görevler sunucuda kaydedilir; geçici kesintilerde devam bilgisi korunur.", color = Color(0xFF9EA9BC), fontSize = 11.sp, lineHeight = 16.sp)
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 13.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text("APEX KOMUTA SİSTEMİ", color = Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+                        Text("GPT planlar • Ajanlar üretir • Gemini denetler", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(7.dp).background(if (deviceToken.isNotBlank()) Color(0xFF43D6A0) else Color(0xFFFFB454), RoundedCornerShape(50)))
+                            Spacer(Modifier.width(7.dp))
+                            Text(status, color = Color(0xFFB8C1D4), fontSize = 9.sp, maxLines = 2)
                         }
                     }
                 }
-                Text(if (taskId.isBlank()) "APEX HAZIR" else "GÖREV • ${taskId.take(8)}", color = Color.Gray, fontSize = 8.sp, maxLines = 1)
+                Column(
+                    modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(13.dp)
+                ) {
+                    if (taskId.isNotBlank()) {
+                        Text("AKTİF GÖREV  •  ${taskId.take(8)}", color = Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    } else {
+                        Spacer(Modifier.height(2.dp))
+                        Text("Nasıl yardımcı olabilirim?", color = Color.White, fontSize = if (compact) 22.sp else 25.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Bir görev yaz. APEX ekibi üzerinde çalışmaya başlasın.", color = Color(0xFF9CA3AF), fontSize = 13.sp)
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(7.dp).background(if (providers["openai"] == true) Color(0xFF43D6A0) else Color.Gray, RoundedCornerShape(50)))
+                            Spacer(Modifier.width(6.dp))
+                            Text("GPT", color = Color(0xFFBFC5D1), fontSize = 11.sp)
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(7.dp).background(if (providers["gemini"] == true) Color(0xFF43D6A0) else Color.Gray, RoundedCornerShape(50)))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Gemini", color = Color(0xFFBFC5D1), fontSize = 11.sp)
+                        }
+                    }
+                }
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    color = Panel.copy(alpha = .99f),
-                    shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
+                    color = Color.Black,
+                    shape = RoundedCornerShape(0.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
+                        color = Color(0xFF292A2D),
+                        shape = RoundedCornerShape(30.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF55565A))
                     ) {
-                        FilledIconButton(
-                            onClick = { addExpanded = true },
-                            modifier = Modifier.size(42.dp),
-                            shape = RoundedCornerShape(50)
-                        ) { Icon(Icons.Default.Add, contentDescription = "Ek ekle") }
-                        DropdownMenu(expanded = addExpanded, onDismissRequest = { addExpanded = false }) {
-                            DropdownMenuItem(text = { Text("Kamera") }, onClick = { addExpanded = false; cameraCapture.launch(null) })
-                            DropdownMenuItem(text = { Text("Fotoğraflar") }, onClick = { addExpanded = false; photoPicker.launch("image/*") })
-                            DropdownMenuItem(text = { Text("Dosyalar") }, onClick = { addExpanded = false; filePicker.launch(arrayOf("*/*")) })
-                        }
-                        Surface(
-                            modifier = Modifier.weight(1f),
-                            color = Color.Transparent,
-                            shape = RoundedCornerShape(28.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF777487))
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.padding(start = 16.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                                    if (command.isEmpty()) Text("Mesajınızı yazın...", color = Color(0xFFB9B6C5), fontSize = 16.sp)
-                                    BasicTextField(
-                                        value = command,
-                                        onValueChange = { command = it },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp),
-                                        maxLines = 5
-                                    )
+                            Box {
+                                IconButton(onClick = { addExpanded = true }, modifier = Modifier.size(40.dp)) {
+                                    Icon(Icons.Default.Add, contentDescription = "Dosya ekle", tint = Color.White, modifier = Modifier.size(27.dp))
                                 }
-                                if (command.isBlank()) {
-                                    IconButton(
-                                        onClick = {
-                                            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                                                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR")
-                                                putExtra(RecognizerIntent.EXTRA_PROMPT, "APEX için talimatınızı söyleyin")
-                                            }
-                                            try { speechInput.launch(intent) } catch (_: Exception) { status = "SES TANIMA HİZMETİ BULUNAMADI" }
-                                        },
-                                        modifier = Modifier.size(38.dp)
-                                    ) { Icon(Icons.Default.Mic, "Sesli talimat", tint = Cyan) }
-                                } else {
-                                    FilledIconButton(
-                                        onClick = { startTask() },
-                                        modifier = Modifier.size(38.dp),
-                                        shape = RoundedCornerShape(50)
-                                    ) { Icon(Icons.Default.Send, contentDescription = "Gönder") }
+                                DropdownMenu(expanded = addExpanded, onDismissRequest = { addExpanded = false }) {
+                                    DropdownMenuItem(text = { Text("Kamera") }, onClick = { addExpanded = false; cameraCapture.launch(null) })
+                                    DropdownMenuItem(text = { Text("Fotoğraflar") }, onClick = { addExpanded = false; photoPicker.launch("image/*") })
+                                    DropdownMenuItem(text = { Text("Dosyalar") }, onClick = { addExpanded = false; filePicker.launch(arrayOf("*/*")) })
                                 }
+                            }
+                            Box(Modifier.weight(1f).padding(vertical = 9.dp), contentAlignment = Alignment.CenterStart) {
+                                if (command.isEmpty()) Text("APEX'e mesaj yaz", color = Color(0xFFBFC0C5), fontSize = 15.sp)
+                                BasicTextField(
+                                    value = command,
+                                    onValueChange = { command = it },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 15.sp),
+                                    maxLines = 5
+                                )
+                            }
+                            if (command.isBlank()) {
+                                IconButton(onClick = {
+                                    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR")
+                                        putExtra(RecognizerIntent.EXTRA_PROMPT, "APEX için talimatınızı söyleyin")
+                                    }
+                                    try { speechInput.launch(intent) } catch (_: Exception) { status = "SES TANIMA HİZMETİ BULUNAMADI" }
+                                }, modifier = Modifier.size(40.dp)) {
+                                    Icon(Icons.Default.Mic, "Sesli talimat", tint = Color.White, modifier = Modifier.size(24.dp))
+                                }
+                            } else {
+                                FilledIconButton(
+                                    onClick = { startTask(); command = "" },
+                                    modifier = Modifier.size(38.dp),
+                                    shape = RoundedCornerShape(50),
+                                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = Color.White, contentColor = Color.Black)
+                                ) { Icon(Icons.Default.Send, contentDescription = "Gönder") }
                             }
                         }
                     }
-                }            }
+                }
+            }
         }
-    }
 }
 
 @Composable

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.*
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -216,7 +217,7 @@ fun ApexHome() {
         BoxWithConstraints(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF101A31), Night)))) {
             val compact = maxHeight < 700.dp
             Column(
-                modifier = Modifier.fillMaxSize().padding(horizontal = if (compact) 14.dp else 20.dp, vertical = if (compact) 8.dp else 12.dp),
+                modifier = Modifier.fillMaxSize().padding(start = if (compact) 14.dp else 20.dp, end = if (compact) 14.dp else 20.dp, top = if (compact) 8.dp else 12.dp),
                 verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp)
             ) {
                 Row(Modifier.fillMaxWidth().height(if (compact) 54.dp else 64.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -259,9 +260,13 @@ fun ApexHome() {
                     }
 
                 }
-                Surface(Modifier.fillMaxWidth(), color = Panel.copy(alpha = .99f), shape = RoundedCornerShape(20.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        OutlinedTextField(command, { command = it }, Modifier.fillMaxWidth(), minLines = 1, maxLines = 3, placeholder = { Text("APEX'ya bir görev ver...") }, shape = RoundedCornerShape(14.dp))
+                Text(if (taskId.isBlank()) "GÖREV MOTORU • SUNUCU KUYRUĞU" else "AKTİF GÖREV • $taskId", color = Color.Gray, fontSize = 8.sp, maxLines = 1)
+                Surface(
+                    Modifier.fillMaxWidth(),
+                    color = Panel.copy(alpha = .99f),
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         if (attachmentLabel.isNotBlank()) Text(attachmentLabel, color = Cyan, fontSize = 9.sp, maxLines = 1)
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Box {
@@ -272,22 +277,36 @@ fun ApexHome() {
                                     DropdownMenuItem(text = { Text("Dosyalar") }, onClick = { addExpanded = false; filePicker.launch(arrayOf("*/*")) })
                                 }
                             }
-                            FilledTonalIconButton(onClick = {
+                            OutlinedTextField(
+                                value = command,
+                                onValueChange = { command = it },
+                                modifier = Modifier.weight(1f),
+                                minLines = 1,
+                                maxLines = 4,
+                                placeholder = { Text("Mesajınızı yazın...") },
+                                shape = RoundedCornerShape(24.dp)
+                            )
+                            FilledIconButton(
+                                onClick = { startTask() },
+                                enabled = command.isNotBlank(),
+                                modifier = Modifier.size(46.dp),
+                                shape = RoundedCornerShape(50)
+                            ) { Icon(Icons.Default.Send, contentDescription = "Gönder") }
+                        }
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text("APEX", color = Color.Gray, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            Spacer(Modifier.weight(1f))
+                            IconButton(onClick = {
                                 val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                                     putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR")
                                     putExtra(RecognizerIntent.EXTRA_PROMPT, "APEX için talimatınızı söyleyin")
                                 }
                                 try { speechInput.launch(intent) } catch (_: Exception) { status = "SES TANIMA HİZMETİ BULUNAMADI" }
-                            }, modifier = Modifier.size(42.dp)) { Icon(Icons.Default.Mic, "Sesli talimat", tint = Cyan) }
-                            Spacer(Modifier.weight(1f))
-                            Button(onClick = { startTask() }, modifier = Modifier.height(46.dp), shape = RoundedCornerShape(14.dp)) {
-                                Icon(Icons.Default.Bolt, null); Spacer(Modifier.width(6.dp)); Text("GÖREVİ BAŞLAT", fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                            }
+                            }, modifier = Modifier.size(34.dp)) { Icon(Icons.Default.Mic, "Sesli talimat", tint = Cyan) }
                         }
                     }
                 }
-                Text(if (taskId.isBlank()) "GÖREV MOTORU • SUNUCU KUYRUĞU" else "AKTİF GÖREV • $taskId", color = Color.Gray, fontSize = 8.sp, maxLines = 1)
             }
         }
     }

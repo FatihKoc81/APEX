@@ -29,7 +29,7 @@ app.post("/auth/enroll",(req,res)=>{
 app.use(requireDevice);
 app.get("/providers",(_req,res)=>res.json(providerStatus()));
 app.get("/studio/config",(_req,res)=>res.json(studioConfig()));
-app.get("/studio/jobs",(_req,res)=>res.json(listStudioJobs(Number(req.query.limit)||30)));
+app.get("/studio/jobs",(req,res)=>res.json(listStudioJobs(Number(req.query.limit)||30)));
 app.post("/studio/jobs",(req,res)=>{
  const topic=String(req.body?.topic||"").trim();
  const id=createStudioJob({mode:"custom",topic,durationSeconds:Number(req.body?.durationSeconds)||60});

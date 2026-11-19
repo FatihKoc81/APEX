@@ -72,7 +72,28 @@ export async function workerLoop() {
           const gem=await askProvider("gemini","Sen bağımsız kalite denetçisisin. GPT'nin yaptığı işi denetle; eksiklerini ve doğrulama gereksinimlerini belirt. Kullanıcı emrinin tamamlanıp tamamlanmadığını değerlendir.",`ANA EMİR:\n${task.instruction}\n\nGPT TUR ${step} ÇIKTISI:\n${gpt.text}\n\nÖNCEKİ NOTLAR:\n${cp.notes}\n\nKısa denetim yaz: somut eksikler, doğrulama ve devam için sonraki adım. Gerçekten bitmediyse tamamlandı deme.`);
           cp.transcript.push(`TUR ${step} • GEMINI DENETİMİ\n${gem.text}`);
           event(task.id,"gemini","ok",`Gemini tur ${step} denetimini tamamladı`,"gemini");
-          const review=await askProvider("openai","Sen son karar veren görev yöneticisisin. Gemini denetimini dikkate al. Erken tamamlandı deme. Görev tamamlanmadıysa CONTINUE seç.",`KULLANICI EMRİ:\n${task.instruction}\n\nGPT ÇIKTISI:\n${gpt.text}\n\nGEMINI DENETİMİ:\n${gem.text}\n\nÖnceki çalışma notları:\n${cp.notes}\n\nBir sonraki tur için kısa çalışma notlarını güncelle. Tüm isteklerin gerçekten tamamlanıp kontrol edildiğine dair kanıt yoksa TASK_STATUS: CONTINUE yaz. Dış erişim/izin olmadan ilerlemek mümkün değilse TASK_STATUS: BLOCKED yaz. Yalnızca tüm iş tamam ve doğrulanmışsa TASK_STATUS: COMPLETE yaz. Son satırda durum etiketini yaz.`);
+          // Optional gateways are independent reviewer lanes. They run concurrently and
+          // never block the core GPT/Gemini workflow when a gateway is offline.
+          const gatewayProviders=configured.filter(p=>p==="omniroute" || p==="freellmapi" || p==="9router");
+          const gatewaySettled=await Promise.allSettled(gatewayProviders.map(provider =>
+            askProvider(provider,"Sen bağımsız uzman denetçi ajanısın. Ana emri ve mevcut çıktıyı incele; hataları, eksikleri ve doğrulanabilir sonraki adımları bildir. Emin olmadığın şeyi gerçekmiş gibi sunma.",
+              `ANA EMİR:\n${task.instruction}\n\nGPT ÇIKTISI:\n${gpt.text}\n\nGEMINI DENETİMİ:\n${gem.text}\n\nÖNCEKİ NOTLAR:\n${cp.notes}\n\nBu tur için bağımsız teknik/stratejik denetim yap.`)
+          ));
+          const gatewayAudits:string[]=[];
+          gatewaySettled.forEach((result,index)=>{
+            const provider=gatewayProviders[index];
+            if(result.status==="fulfilled") {
+              gatewayAudits.push(`[${provider}] ${result.value.text}`);
+              cp.transcript.push(`TUR ${step} • ${provider.toUpperCase()} AJAN DENETİMİ\n${result.value.text}`);
+              event(task.id,"agent_review","ok",`${provider} bağımsız ajan denetimini tamamladı`,provider);
+            } else {
+              const reason=result.reason instanceof Error?result.reason.message:String(result.reason);
+              gatewayAudits.push(`[${provider}] Bu tur erişilemedi: ${reason}`);
+              event(task.id,"agent_review","warning",`${provider} erişilemedi; ana görev devam ediyor: ${reason}`,provider);
+            }
+          });
+          const gatewayAuditText=gatewayAudits.join("\\n\\n") || "(Ek ağ geçidi yapılandırılmadı)";
+          const review=await askProvider("openai","Sen son karar veren görev yöneticisisin. Gemini denetimini dikkate al. Erken tamamlandı deme. Görev tamamlanmadıysa CONTINUE seç.",`KULLANICI EMRİ:\n${task.instruction}\n\nGPT ÇIKTISI:\n${gpt.text}\n\nGEMINI DENETİMİ:\n${gem.text}\n\nEK BAĞIMSIZ AJAN DENETİMLERİ:\n${gatewayAuditText}\n\nÖnceki çalışma notları:\n${cp.notes}\n\nBir sonraki tur için kısa çalışma notlarını güncelle. Tüm isteklerin gerçekten tamamlanıp kontrol edildiğine dair kanıt yoksa TASK_STATUS: CONTINUE yaz. Dış erişim/izin olmadan ilerlemek mümkün değilse TASK_STATUS: BLOCKED yaz. Yalnızca tüm iş tamam ve doğrulanmışsa TASK_STATUS: COMPLETE yaz. Son satırda durum etiketini yaz.`);
           cp.notes=review.text;
           cp.transcript.push(`TUR ${step} • GPT DEVAM KARARI\n${review.text}`);
           saveCheckpoint(task.id,step,cp);

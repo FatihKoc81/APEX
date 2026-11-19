@@ -24,7 +24,7 @@ services:
         value: Europe/Istanbul
       - key: STUDIO_TOPICS
         value: Tarih, teknoloji, genel kültür, otomobil, ilginç bilgiler
-      - key: PEXELS_API_KEY
+      - key: PIXABAY_API_KEY
         sync: false
       - key: CREATOMATE_API_KEY
         sync: false

@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { db, event } from "./db.js";
 import { askProvider, askOpenAIWithTools, providerStatus, type ProviderName } from "./providers.js";
 
-const MAX_STEPS = Number(process.env.MAX_STEPS_PER_TASK || 50);
-const MAX_MINUTES = Number(process.env.MAX_TASK_MINUTES || 180);
+const MAX_STEPS = Number(process.env.MAX_STEPS_PER_TASK || 300);
+const MAX_MINUTES = Number(process.env.MAX_TASK_MINUTES || 1080);
 const sleep = (ms:number) => new Promise(r => setTimeout(r, ms));
 
 type Checkpoint = { notes: string; transcript: string[] };

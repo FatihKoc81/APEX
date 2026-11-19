@@ -88,7 +88,7 @@ fun ApexHome() {
                 prefs.edit().putString("device_token", token).putString("device_id", result.optString("id")).apply()
                 activity.runOnUiThread {
                     deviceToken = token; inviteCode = ""; enrollmentOpen = false; enrollmentBusy = false
-                    status = "BU CİHAZ APEX'E YETKİLENDİRİLDİ"; refreshProviders()
+                    status = "BU CİHAZ APEX'E YETKİLENDİRİLDİ"
                 }
             } catch (e: Exception) {
                 activity.runOnUiThread { enrollmentBusy = false; status = "YETKİLENDİRME BAŞARISIZ • ${e.message}" }
@@ -182,7 +182,7 @@ fun ApexHome() {
         }.start()
     }
 
-    LaunchedEffect(Unit) { if (deviceToken.isNotBlank()) refreshProviders() else status = "BU CİHAZ HENÜZ YETKİLENDİRİLMEDİ" }
+    LaunchedEffect(deviceToken) { if (deviceToken.isNotBlank()) refreshProviders() else status = "BU CİHAZ HENÜZ YETKİLENDİRİLMEDİ" }
 
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) attachmentLabel = "Fotoğraf seçildi (henüz sunucuya aktarılmıyor)"

@@ -73,7 +73,7 @@ export async function workerLoop() {
           event(task.id,"planning","ok","Baş planlama ajanı işi alt görevlere böldü","openai");
           // Specialist agents receive the plan concurrently. Their role is advisory;
           // the main executor remains the only agent with repository write tools.
-          const specialistPool=configured.filter(p=>p!=="openai").slice(0,Number(process.env.MAX_PARALLEL_AGENTS||6));
+          const specialistPool=configured.filter(p=>p!=="openai" && p!=="gemini").slice(0,Number(process.env.MAX_PARALLEL_AGENTS||6));
           const specialistRoles=[
             "Yazılım mimarı: teknik tasarım, dosya etkileri ve entegrasyon yaklaşımını incele.",
             "Araştırma uzmanı: gerekli teknik bilgileri, seçenekleri ve doğrulanması gereken iddiaları çıkar.",

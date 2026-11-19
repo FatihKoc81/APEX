@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import { executeGithubTool } from "./github.js";
 dotenv.config();
 
-export type ProviderName = "openai" | "gemini";
+export type ProviderName = "openai" | "gemini" | "omniroute" | "freellmapi" | "9router";
 export type ProviderReply = { provider: ProviderName; text: string };
 function firstConfigured(names:string[]):{key?:string;envName?:string} {
   for (const name of names) {
@@ -13,12 +13,27 @@ function firstConfigured(names:string[]):{key?:string;envName?:string} {
 }
 const openaiConfig=firstConfigured(["OPENAI_API_KEY","OPENAI_KEY"]);
 const geminiConfig=firstConfigured(["GEMINI_API_KEY","GOOGLE_API_KEY","GOOGLE_GENERATIVE_AI_API_KEY"]);
-const keys: Record<ProviderName,string|undefined> = {openai:openaiConfig.key,gemini:geminiConfig.key};
+const gatewayConfigs = {
+  omniroute: { baseUrl: process.env.OMNIROUTE_BASE_URL?.trim(), key: process.env.OMNIROUTE_API_KEY?.trim(), model: process.env.OMNIROUTE_MODEL?.trim() || "auto" },
+  freellmapi: { baseUrl: process.env.FREELLMAPI_BASE_URL?.trim(), key: process.env.FREELLMAPI_API_KEY?.trim(), model: process.env.FREELLMAPI_MODEL?.trim() || "auto" },
+  "9router": { baseUrl: process.env.NINEROUTER_BASE_URL?.trim(), key: process.env.NINEROUTER_API_KEY?.trim(), model: process.env.NINEROUTER_MODEL?.trim() || "auto" }
+};
+const keys: Record<ProviderName,string|undefined> = {
+  openai:openaiConfig.key, gemini:geminiConfig.key,
+  omniroute:gatewayConfigs.omniroute.key,
+  freellmapi:gatewayConfigs.freellmapi.key,
+  "9router":gatewayConfigs["9router"].key
+};
+const sourceEnvs: Record<ProviderName,string> = {
+  openai:"OPENAI_API_KEY", gemini:"GEMINI_API_KEY",
+  omniroute:"OMNIROUTE_API_KEY", freellmapi:"FREELLMAPI_API_KEY", "9router":"NINEROUTER_API_KEY"
+};
 export function providerStatus() {
   return (Object.keys(keys) as ProviderName[]).map(provider => ({
     provider,
-    configured:Boolean(keys[provider]),
-    sourceEnv:provider==="openai" ? openaiConfig.envName ?? null : geminiConfig.envName ?? null
+    configured:Boolean(keys[provider] && (provider==="openai" || provider==="gemini" || gatewayConfigs[provider as keyof typeof gatewayConfigs]?.baseUrl)),
+    sourceEnv:provider==="openai" ? openaiConfig.envName ?? null : provider==="gemini" ? geminiConfig.envName ?? null : sourceEnvs[provider],
+    model: provider in gatewayConfigs ? gatewayConfigs[provider as keyof typeof gatewayConfigs].model : null
   }));
 }
 const githubTools = [
@@ -48,8 +63,15 @@ export async function askOpenAIWithTools(system:string,prompt:string):Promise<st
 }
 export async function askProvider(provider:ProviderName,system:string,prompt:string):Promise<ProviderReply> {
  const key=keys[provider]; if(!key) throw new Error(`${provider} API anahtarı yapılandırılmamış`);
- const url=provider==="openai"?"https://api.openai.com/v1/chat/completions":"https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
- const model=provider==="openai"?"gpt-4.1-mini":"gemini-2.5-flash";
+ let url:string, model:string;
+ if(provider==="openai") { url="https://api.openai.com/v1/chat/completions"; model="gpt-4.1-mini"; }
+ else if(provider==="gemini") { url="https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"; model="gemini-2.5-flash"; }
+ else {
+   const config=gatewayConfigs[provider];
+   if(!config.baseUrl) throw new Error(`${provider} BASE_URL yapılandırılmamış`);
+   url=`${config.baseUrl.replace(/\\/+$/,"")}/chat/completions`;
+   model=config.model;
+ }
  const response=await fetch(url,{method:"POST",headers:{authorization:`Bearer ${key}`,"content-type":"application/json"},body:JSON.stringify({model,temperature:0.2,messages:[{role:"system",content:system},{role:"user",content:prompt}]})});
  const data:any=await response.json(); if(!response.ok) throw new Error(data.error?.message||`${provider} HTTP ${response.status}`);
  return {provider,text:data.choices?.[0]?.message?.content||""};

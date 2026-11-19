@@ -10,7 +10,7 @@ services:
       - key: NODE_VERSION
         value: 22
       - key: PORT
-        value: 10000
+        value: 30000
       - key: OPENAI_API_KEY
         sync: false
       - key: GEMINI_API_KEY
@@ -18,4 +18,4 @@ services:
       - key: MAX_STEPS_PER_TASK
         value: 100
       - key: MAX_TASK_MINUTES
-        value: 360
+        value: 1080
